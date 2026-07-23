@@ -169,6 +169,42 @@
             background-color: #f9f9f9;
         }
 
+        .calendar-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+        }
+
+        .calendar-day {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+
+        .calendar-date {
+            background-color: #e9ecef;
+            border-radius: 4px;
+            padding: 5px;
+            min-height: 30px;
+        }
+
+        .calendar-empty {
+            opacity: 0.5;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .container {
@@ -202,6 +238,29 @@
                     <div class="form-group">
                         <label for="date">Date:</label>
                         <input type="date" id="date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vendor">Vendor:</label>
+                        <select id="vendor" required>
+                            <option value="">Select a vendor</option>
+                            <option value="Whole Foods">Whole Foods</option>
+                            <option value="Costco">Costco</option>
+                            <option value="Walmart">Walmart</option>
+                            <option value="Target">Target</option>
+                            <option value="Wendy's">Wendy's</option>
+                            <option value="Domino's">Domino's</option>
+                            <option value="DoorDash">DoorDash</option>
+                            <option value="Jimmy John's">Jimmy John's</option>
+                            <option value="bar">Bar</option>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="other">Other (please specify)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="vendor-other-field" style="display: none;">
+                        <label for="vendor-other">Specify Vendor:</label>
+                        <input type="text" id="vendor-other" placeholder="Enter vendor name">
                     </div>
                     
                     <div class="form-group">
@@ -247,6 +306,14 @@
                     </div>
                 </div>
 
+                <!-- Calendar Visualization -->
+                <div class="calendar-container">
+                    <div class="calendar-header">Spending by Day (Last 7 Days)</div>
+                    <div id="spending-calendar" class="calendar-grid">
+                        <!-- Calendar will be generated here -->
+                    </div>
+                </div>
+
                 <div class="chart-container">
                     <h3>Spending by Category</h3>
                     <p id="category-chart">Chart would appear here (in a full version)</p>
@@ -262,6 +329,7 @@
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Vendor</th>
                             <th>Description</th>
                             <th>Category</th>
                             <th>Amount</th>
@@ -286,27 +354,52 @@
                     this.loadExpenses();
                     this.bindEvents();
                     this.updateDisplay();
+                    
+                    // Set default date to today
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('date').value = today;
                 }
 
                 bindEvents() {
                     const form = document.getElementById('expenseForm');
                     form.addEventListener('submit', (e) => this.addExpense(e));
                     
+                    // Vendor dropdown change event
+                    const vendorSelect = document.getElementById('vendor');
+                    vendorSelect.addEventListener('change', () => {
+                        const otherField = document.getElementById('vendor-other-field');
+                        if (vendorSelect.value === 'other') {
+                            otherField.style.display = 'block';
+                        } else {
+                            otherField.style.display = 'none';
+                        }
+                    });
+                    
                     // Export button
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
-                    
-                    // Initialize date to today
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date').value = today;
                 }
 
                 addExpense(event) {
                     event.preventDefault();
                     
+                    const vendorSelect = document.getElementById('vendor');
+                    let vendorName = vendorSelect.value;
+                    
+                    // Handle "other" vendor case
+                    if (vendorName === 'other') {
+                        const otherInput = document.getElementById('vendor-other');
+                        if (!otherInput.value.trim()) {
+                            alert('Please specify the vendor name for "Other"');
+                            return;
+                        }
+                        vendorName = otherInput.value.trim();
+                    }
+
                     const expense = {
-                        id: Date.now(), // Simple ID generator
+                        id: Date.now(),
                         date: document.getElementById('date').value,
+                        vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
                         category: document.getElementById('category').value
@@ -318,6 +411,9 @@
                     
                     // Reset form
                     event.target.reset();
+                    document.getElementById('vendor-other-field').style.display = 'none';
+                    
+                    // Set date back to today
                     const today = new Date().toISOString().split('T')[0];
                     document.getElementById('date').value = today;
                 }
@@ -344,7 +440,7 @@
                 updateDisplay() {
                     this.updateExpenseList();
                     this.calculateAverages();
-                    // We're not showing charts in this version for simplicity
+                    this.updateCalendar();
                 }
 
                 updateExpenseList() {
@@ -362,6 +458,7 @@
                         
                         row.innerHTML = `
                             <td>${formattedDate}</td>
+                            <td>${expense.vendor}</td>
                             <td>${expense.description}</td>
                             <td>${this.getCategoryName(expense.category)}</td>
                             <td>$${expense.amount.toFixed(2)}</td>
@@ -420,18 +517,83 @@
                     return total / filteredExpenses.length;
                 }
                 
+                updateCalendar() {
+                    const calendarContainer = document.getElementById('spending-calendar');
+                    calendarContainer.innerHTML = '';
+                    
+                    if (this.expenses.length === 0) {
+                        calendarContainer.innerHTML = '<p>No expenses to display</p>';
+                        return;
+                    }
+                    
+                    // Get last 7 days
+                    const today = new Date();
+                    const weekData = {};
+                    
+                    // Initialize with all 7 days
+                    for (let i = 6; i >= 0; i--) {
+                        const date = new Date(today);
+                        date.setDate(date.getDate() - i);
+                        const dateStr = date.toISOString().split('T')[0];
+                        weekData[dateStr] = 0;
+                    }
+                    
+                    // Sum expenses for each day
+                    this.expenses.forEach(expense => {
+                        if (weekData.hasOwnProperty(expense.date)) {
+                            weekData[expense.date] += expense.amount;
+                        }
+                    });
+                    
+                    // Create calendar days
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    days.forEach(day => {
+                        const dayElement = document.createElement('div');
+                        dayElement.className = 'calendar-day';
+                        dayElement.textContent = day;
+                        calendarContainer.appendChild(dayElement);
+                    });
+                    
+                    // Add dates and amounts
+                    Object.keys(weekData).forEach((dateStr, index) => {
+                        const date = new Date(dateStr);
+                        const dateElement = document.createElement('div');
+                        dateElement.className = 'calendar-day';
+                        
+                        const dayNumber = date.getDate();
+                        const amount = weekData[dateStr];
+                        
+                        if (amount > 0) {
+                            dateElement.innerHTML = `
+                                <div class="calendar-date" style="background-color: #3498db; color: white;">
+                                    ${dayNumber}<br>
+                                    $${amount.toFixed(2)}
+                                </div>
+                            `;
+                        } else {
+                            dateElement.innerHTML = `
+                                <div class="calendar-date calendar-empty">
+                                    ${dayNumber}
+                                </div>
+                            `;
+                        }
+                        
+                        calendarContainer.appendChild(dateElement);
+                    });
+                }
+                
                 exportToCSV() {
                     if (this.expenses.length === 0) {
                         alert("No expenses to export");
                         return;
                     }
 
-                    const headers = ['Date', 'Description', 'Category', 'Amount'];
+                    const headers = ['Date', 'Vendor', 'Description', 'Category', 'Amount'];
                     const csvContent = [
                         headers.join(','),
                         ...this.expenses.map(expense => {
                             const formattedDate = new Date(expense.date).toLocaleDateString();
-                            return `"${formattedDate}","${expense.description}","${this.getCategoryName(expense.category)}","${expense.amount.toFixed(2)}"`;
+                            return `"${formattedDate}","${expense.vendor}","${expense.description}","${this.getCategoryName(expense.category)}","${expense.amount.toFixed(2)}"`;
                         })
                     ].join('\n');
 
