@@ -381,7 +381,7 @@
 
                 <div class="chart-container">
                     <h3>Spending by Category</h3>
-                    <p id="category-chart">Chart would appear here (in a full version)</p>
+                    <p id="category-chart">Chart would appear here</p>
                 </div>
             </section>
 
@@ -427,8 +427,10 @@
                     this.updateDisplay();
                     
                     // Set default date to today
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date').value = today;
+                    const today = new Date();
+                    // Format as YYYY-MM-DD for HTML input
+                    const formattedDate = today.toISOString().split('T')[0];
+                    document.getElementById('date').value = formattedDate;
                 }
 
                 bindEvents() {
@@ -471,9 +473,16 @@
                         vendorName = otherInput.value.trim();
                     }
 
+                    // Get date value and parse it properly
+                    const dateString = document.getElementById('date').value;
+                    const expenseDate = new Date(dateString);
+                    
+                    // Convert to local time zone to avoid timezone offset issues
+                    const localDate = new Date(expenseDate.getTime() + expenseDate.getTimezoneOffset() * 60000);
+                    
                     const expense = {
                         id: Date.now(),
-                        date: document.getElementById('date').value,
+                        date: localDate.toISOString().split('T')[0], // Store as YYYY-MM-DD format
                         vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
@@ -500,8 +509,9 @@
                     document.getElementById('vendor-other-field').style.display = 'none';
                     
                     // Set date back to today
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date').value = today;
+                    const today = new Date();
+                    const formattedDate = today.toISOString().split('T')[0];
+                    document.getElementById('date').value = formattedDate;
                 }
 
                 saveExpenses() {
@@ -539,8 +549,9 @@
                     sortedExpenses.forEach(expense => {
                         const row = document.createElement('tr');
                         
-                        // Format date for display
-                        const formattedDate = new Date(expense.date).toLocaleDateString();
+                        // Format date for display (preserve original format)
+                        const expenseDate = new Date(expense.date);
+                        const formattedDate = expenseDate.toLocaleDateString();
                         
                         row.innerHTML = `
                             <td>${formattedDate}</td>
@@ -801,7 +812,9 @@
                     const csvContent = [
                         headers.join(','),
                         ...this.expenses.map(expense => {
-                            const formattedDate = new Date(expense.date).toLocaleDateString();
+                            // Handle date properly for CSV
+                            const expenseDate = new Date(expense.date);
+                            const formattedDate = expenseDate.toLocaleDateString();
                             return `"${formattedDate}","${expense.vendor}","${expense.description}","${this.getCategoryName(expense.category)}","${expense.amount.toFixed(2)}"`;
                         })
                     ].join('\n');
