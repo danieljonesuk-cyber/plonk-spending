@@ -180,6 +180,14 @@
             text-align: center;
             margin-bottom: 15px;
             font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
         }
 
         .calendar-grid {
@@ -189,20 +197,26 @@
             text-align: center;
         }
 
-        .calendar-day {
+        .calendar-day-header {
+            font-weight: bold;
             padding: 8px;
-            font-size: 0.9em;
         }
 
         .calendar-date {
             background-color: #e9ecef;
             border-radius: 4px;
-            padding: 5px;
-            min-height: 30px;
+            padding: 10px 5px;
+            min-height: 40px;
+            font-size: 0.9em;
         }
 
         .calendar-empty {
             opacity: 0.5;
+        }
+
+        .calendar-current-day {
+            background-color: #3498db;
+            color: white;
         }
 
         .edit-buttons {
@@ -328,7 +342,13 @@
 
                 <!-- Calendar Visualization -->
                 <div class="calendar-container">
-                    <div class="calendar-header">Spending by Day (Last 7 Days)</div>
+                    <div class="calendar-header">
+                        <span id="calendar-title">Spending by Day (Current Month)</span>
+                        <div class="calendar-nav">
+                            <button id="prev-month">&lt; Prev</button>
+                            <button id="next-month">Next &gt;</button>
+                        </div>
+                    </div>
                     <div id="spending-calendar" class="calendar-grid">
                         <!-- Calendar will be generated here -->
                     </div>
@@ -369,6 +389,7 @@
                 constructor() {
                     this.expenses = [];
                     this.editingId = null;
+                    this.currentMonth = new Date();
                     this.init();
                 }
 
@@ -400,6 +421,10 @@
                     // Export button
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
+                    
+                    // Calendar navigation
+                    document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
+                    document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
                 }
 
                 addExpense(event) {
@@ -560,67 +585,87 @@
                 
                 updateCalendar() {
                     const calendarContainer = document.getElementById('spending-calendar');
+                    const titleElement = document.getElementById('calendar-title');
                     calendarContainer.innerHTML = '';
                     
                     if (this.expenses.length === 0) {
-                        calendarContainer.innerHTML = '<p>No expenses to display</p>';
+                        calendarContainer.innerHTML = '<p style="grid-column: span 7; text-align: center;">No expenses to display</p>';
                         return;
                     }
                     
-                    // Get last 7 days
-                    const today = new Date();
-                    const weekData = {};
+                    // Get current month and year for display
+                    const month = this.currentMonth.getMonth();
+                    const year = this.currentMonth.getFullYear();
                     
-                    // Initialize with all 7 days
-                    for (let i = 6; i >= 0; i--) {
-                        const date = new Date(today);
-                        date.setDate(date.getDate() - i);
-                        const dateStr = date.toISOString().split('T')[0];
-                        weekData[dateStr] = 0;
-                    }
+                    // Update title
+                    const monthNames = ["January", "February", "March", "April", "May", "June",
+                                       "July", "August", "September", "October", "November", "December"];
+                    titleElement.textContent = `${monthNames[month]} ${year} - Spending by Day`;
                     
-                    // Sum expenses for each day
-                    this.expenses.forEach(expense => {
-                        if (weekData.hasOwnProperty(expense.date)) {
-                            weekData[expense.date] += expense.amount;
-                        }
-                    });
-                    
-                    // Create calendar days
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    days.forEach(day => {
+                    // Create calendar header row with day names
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dayNames.forEach(day => {
                         const dayElement = document.createElement('div');
-                        dayElement.className = 'calendar-day';
+                        dayElement.className = 'calendar-day-header';
                         dayElement.textContent = day;
                         calendarContainer.appendChild(dayElement);
                     });
                     
-                    // Add dates and amounts
-                    Object.keys(weekData).forEach((dateStr, index) => {
-                        const date = new Date(dateStr);
+                    // Get first day of month and days in month
+                    const firstDay = new Date(year, month, 1);
+                    const lastDay = new Date(year, month + 1, 0);
+                    const daysInMonth = lastDay.getDate();
+                    
+                    // Get the day of week for first day (0 = Sunday)
+                    const startDay = firstDay.getDay();
+                    
+                    // Create empty cells for days before first day
+                    for (let i = 0; i < startDay; i++) {
+                        const emptyCell = document.createElement('div');
+                        emptyCell.className = 'calendar-date calendar-empty';
+                        emptyCell.textContent = '';
+                        calendarContainer.appendChild(emptyCell);
+                    }
+                    
+                    // Get spending data for this month grouped by day
+                    const dailySpending = {};
+                    this.expenses.forEach(expense => {
+                        const expenseDate = new Date(expense.date);
+                        
+                        // Check if expense is in current month/year
+                        if (expenseDate.getMonth() === month && expenseDate.getFullYear() === year) {
+                            const day = expenseDate.getDate();
+                            if (!dailySpending[day]) {
+                                dailySpending[day] = 0;
+                            }
+                            dailySpending[day] += expense.amount;
+                        }
+                    });
+                    
+                    // Fill in the days with spending data
+                    for (let day = 1; day <= daysInMonth; day++) {
                         const dateElement = document.createElement('div');
-                        dateElement.className = 'calendar-day';
+                        dateElement.className = 'calendar-date';
                         
-                        const dayNumber = date.getDate();
-                        const amount = weekData[dateStr];
-                        
-                        if (amount > 0) {
-                            dateElement.innerHTML = `
-                                <div class="calendar-date" style="background-color: #3498db; color: white;">
-                                    ${dayNumber}<br>
-                                    $${amount.toFixed(2)}
-                                </div>
-                            `;
-                        } else {
-                            dateElement.innerHTML = `
-                                <div class="calendar-date calendar-empty">
-                                    ${dayNumber}
-                                </div>
-                            `;
+                        // Check if this is today
+                        const today = new Date();
+                        if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                            dateElement.classList.add('calendar-current-day');
                         }
                         
+                        // Add day number and amount spent
+                        dateElement.innerHTML = `
+                            <div>${day}</div>
+                            ${dailySpending[day] ? `<div style="font-size: 0.8em; margin-top: 5px;">$${dailySpending[day].toFixed(2)}</div>` : ''}
+                        `;
+                        
                         calendarContainer.appendChild(dateElement);
-                    });
+                    }
+                }
+
+                changeMonth(direction) {
+                    this.currentMonth.setMonth(this.currentMonth.getMonth() + direction);
+                    this.updateCalendar();
                 }
 
                 startEdit(id) {
