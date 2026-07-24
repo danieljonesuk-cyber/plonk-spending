@@ -656,7 +656,7 @@
                         // Add day number and amount spent
                         dateElement.innerHTML = `
                             <div>${day}</div>
-                            ${dailySpending[day] ? `<div style="font-size: 0.8em; margin-top: 5px;">$${dailySpending[day].toFixed(2)}</div>` : ''}
+                            ${dailySpending[day] !== undefined ? `<div style="font-size: 0.8em; margin-top: 5px;">$${dailySpending[day].toFixed(2)}</div>` : ''}
                         `;
                         
                         calendarContainer.appendChild(dateElement);
