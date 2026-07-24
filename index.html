@@ -231,14 +231,19 @@
             padding: 5px 10px;
             font-size: 0.8em;
             margin: 0 2px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
         }
 
         .edit-btn {
             background-color: #f39c12;
+            color: white;
         }
 
         .delete-btn {
             background-color: #e74c3c;
+            color: white;
         }
 
         /* Tooltip styles */
@@ -428,7 +433,7 @@
                     
                     // Set default date to today
                     const today = new Date();
-                    // Format as YYYY-MM-DD for HTML input
+                    // Format as YYYY-MM-DD (this is the format HTML input uses)  
                     const formattedDate = today.toISOString().split('T')[0];
                     document.getElementById('date').value = formattedDate;
                 }
@@ -457,6 +462,13 @@
                     document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
                 }
 
+                // Helper to handle date properly without timezone shift
+                formatDateForDisplay(dateString) {
+                    // Parse the date string (assumes YYYY-MM-DD format from input)
+                    const [year, month, day] = dateString.split('-').map(Number);
+                    return new Date(year, month - 1, day); // Month is 0-indexed in JS
+                }
+
                 addExpense(event) {
                     event.preventDefault();
                     
@@ -473,16 +485,13 @@
                         vendorName = otherInput.value.trim();
                     }
 
-                    // Get date value and parse it properly
+                    // Get date value and store it as-is without timezone conversion
                     const dateString = document.getElementById('date').value;
-                    const expenseDate = new Date(dateString);
                     
-                    // Convert to local time zone to avoid timezone offset issues
-                    const localDate = new Date(expenseDate.getTime() + expenseDate.getTimezoneOffset() * 60000);
-                    
+                    // Create expense with proper date handling
                     const expense = {
                         id: Date.now(),
-                        date: localDate.toISOString().split('T')[0], // Store as YYYY-MM-DD format
+                        date: dateString, // Store the original string, no conversion
                         vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
@@ -544,13 +553,16 @@
                     tableBody.innerHTML = '';
                     
                     // Sort by date (newest first)
-                    const sortedExpenses = [...this.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    const sortedExpenses = [...this.expenses].sort((a, b) => {
+                        // Compare dates - convert to Date objects for proper sorting
+                        return new Date(b.date) - new Date(a.date);
+                    });
                     
                     sortedExpenses.forEach(expense => {
                         const row = document.createElement('tr');
                         
-                        // Format date for display (preserve original format)
-                        const expenseDate = new Date(expense.date);
+                        // Format date for display without timezone conversion issues
+                        const expenseDate = this.formatDateForDisplay(expense.date);
                         const formattedDate = expenseDate.toLocaleDateString();
                         
                         row.innerHTML = `
@@ -621,11 +633,16 @@
 
                 calculateTotalForPeriod(days) {
                     const now = new Date();
+                    // Set time to midnight for proper date comparison
+                    now.setHours(0, 0, 0, 0);
+                    
                     const cutoffDate = new Date(now);
                     cutoffDate.setDate(cutoffDate.getDate() - days);
 
                     const filteredExpenses = this.expenses.filter(expense => {
-                        return new Date(expense.date) >= cutoffDate;
+                        // Convert expense date string to Date object properly
+                        const expenseDate = this.formatDateForDisplay(expense.date);
+                        return expenseDate >= cutoffDate;
                     });
 
                     const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -679,7 +696,7 @@
                     // Get spending data for this month grouped by day
                     const dailySpending = {};
                     this.expenses.forEach(expense => {
-                        const expenseDate = new Date(expense.date);
+                        const expenseDate = this.formatDateForDisplay(expense.date);
                         
                         // Check if expense is in current month/year
                         if (expenseDate.getMonth() === month && expenseDate.getFullYear() === year) {
@@ -722,7 +739,7 @@
                     
                     // Get expenses for this specific day
                     const dayExpenses = this.expenses.filter(expense => {
-                        const expenseDate = new Date(expense.date);
+                        const expenseDate = this.formatDateForDisplay(expense.date);
                         return (
                             expenseDate.getDate() === day &&
                             expenseDate.getMonth() === month &&
@@ -812,8 +829,8 @@
                     const csvContent = [
                         headers.join(','),
                         ...this.expenses.map(expense => {
-                            // Handle date properly for CSV
-                            const expenseDate = new Date(expense.date);
+                            // Format date properly for CSV
+                            const expenseDate = this.formatDateForDisplay(expense.date);
                             const formattedDate = expenseDate.toLocaleDateString();
                             return `"${formattedDate}","${expense.vendor}","${expense.description}","${this.getCategoryName(expense.category)}","${expense.amount.toFixed(2)}"`;
                         })
