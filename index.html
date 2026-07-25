@@ -351,6 +351,16 @@
                 padding: 15px;
             }
         }
+
+        /* Add a warning about data storage */
+        .storage-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -358,6 +368,10 @@
         <header>
             <h1>Plonk Spending Tracker</h1>
         </header>
+
+        <div class="storage-warning">
+            <strong>Note:</strong> This application stores your data locally in your browser. Data will be visible on any device where you access this page from the same browser.
+        </div>
 
         <main>
             <section class="entry-form">
@@ -523,7 +537,7 @@
         <div id="tooltip" class="tooltip"></div>
 
         <script>
-            // Plonk Spending Tracker - Local Storage Only Version
+            // Plonk Spending Tracker - Local Storage Version
             class SpendingTracker {
                 constructor() {
                     this.expenses = [];
@@ -650,6 +664,7 @@
                         localStorage.setItem('plonkSpendingExpenses', JSON.stringify(this.expenses));
                     } catch (e) {
                         console.error('Failed to save expenses:', e);
+                        alert('Error saving data. Please check browser storage settings.');
                     }
                 }
 
@@ -661,6 +676,8 @@
                         }
                     } catch (e) {
                         console.error('Failed to load expenses:', e);
+                        alert('Error loading data. Please check browser storage settings.');
+                        this.expenses = [];
                     }
                 }
 
@@ -754,7 +771,7 @@
                     document.getElementById('three-month-average').textContent = `$${threeMonthAverage.toFixed(2)}`;
                     
                     // Custom range average (defaults to last 7 days)
-                    this.calculateCustomRange();
+                    this.calculatePastWeeks();
                 }
 
                 calculateTotalForPeriod(days) {
@@ -985,7 +1002,7 @@
                         return;
                     }
 
-                    const from = this.formatDateForDisplay(fromFrom);
+                    const from = this.formatDateForDisplay(fromDate);
                     const to = this.formatDateForDisplay(toDate);
 
                     // Check if toDate is before fromDate
