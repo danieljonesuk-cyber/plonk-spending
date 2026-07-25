@@ -282,26 +282,55 @@
             color: #2c3e50;
         }
 
+        .analytics-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .analytics-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .analytics-section {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+
+        .analytics-section h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
         .date-range-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             align-items: center;
-        }
-
-        .date-range-controls input, .date-range-controls button {
-            padding: 8px;
+            flex-wrap: wrap;
         }
 
         .week-selector {
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 10px;
         }
 
         .week-selector button {
             width: auto;
             padding: 8px 12px;
+        }
+
+        .week-display {
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
         }
 
         /* Responsive design */
@@ -320,11 +349,6 @@
             
             button {
                 padding: 15px;
-            }
-            
-            .date-range-controls {
-                flex-direction: column;
-                align-items: stretch;
             }
         }
     </style>
@@ -355,6 +379,9 @@
                             <option value="Wendy's">Wendy's</option>
                             <option value="Domino's">Domino's</option>
                             <option value="DoorDash">DoorDash</option>
+                            <option value="Wonder">Wonder</option>
+                            <option value="Uber Eats">Uber Eats</option>
+                            <option value="Instacart">Instacart</option>
                             <option value="Jimmy John's">Jimmy John's</option>
                             <option value="bar">Bar</option>
                             <option value="restaurant">Restaurant</option>
@@ -409,7 +436,7 @@
                         <p id="three-month-average">$0.00</p>
                     </div>
                     <div class="card">
-                        <h3>Custom Range Average</h3>
+                        <h3 id="current-analysis-type">Custom Range Average</h3>
                         <p id="custom-range-average">$0.00</p>
                     </div>
                 </div>
@@ -418,27 +445,35 @@
                 <div class="custom-analytics">
                     <h3>Bespoke Analysis</h3>
                     
-                    <!-- Date Range Selector -->
-                    <div class="date-range-controls">
-                        <label for="from-date">From:</label>
-                        <input type="date" id="from-date">
-                        <label for="to-date">To:</label>
-                        <input type="date" id="to-date">
-                        <button id="calculate-range-btn">Calculate</button>
-                    </div>
-                    
-                    <!-- Past Weeks Selector -->
-                    <div class="week-selector">
-                        <span>Last</span>
-                        <button id="weeks-decrease" disabled>-</button>
-                        <span id="weeks-count">1</span>
-                        <button id="weeks-increase">+</button>
-                        <span>Week(s)</span>
-                        <button id="calculate-weeks-btn">Calculate</button>
+                    <div class="analytics-controls">
+                        <!-- Date Range Section -->
+                        <div class="analytics-section">
+                            <h4>Date Range Analysis</h4>
+                            <div class="date-range-controls">
+                                <label for="from-date">From:</label>
+                                <input type="date" id="from-date">
+                                <label for="to-date">To:</label>
+                                <input type="date" id="to-date">
+                                <button id="calculate-range-btn">Calculate</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Weeks Section -->
+                        <div class="analytics-section">
+                            <h4>Weeks Analysis</h4>
+                            <div class="week-selector">
+                                <span>Last</span>
+                                <button id="weeks-decrease" disabled>-</button>
+                                <span id="weeks-count" class="week-display">1</span>
+                                <button id="weeks-increase">+</button>
+                                <span>Week(s)</span>
+                                <button id="calculate-weeks-btn">Calculate</button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div style="margin-top: 15px; padding: 10px; background-color: #e9ecef; border-radius: 4px;">
-                        <p><strong>Current Week Range:</strong> <span id="current-week-range">-</span></p>
+                        <p><strong>Current Analysis:</strong> <span id="current-analysis-display">-</span></p>
                     </div>
                 </div>
 
@@ -496,6 +531,7 @@
                     this.currentMonth = new Date();
                     this.tooltip = document.getElementById('tooltip');
                     this.weeksCount = 1; // Default to 1 week
+                    this.currentAnalysis = 'weeks'; // Track current analysis type
                     this.init();
                 }
 
@@ -883,7 +919,7 @@
                     // Check if vendor is in our predefined list
                     const vendorSelect = document.getElementById('vendor');
                     const otherField = document.getElementById('vendor-other-field');
-                    if (!['Cooked at home', 'Whole Foods', 'Costco', 'Walmart', 'Target', 'Wendy\'s', 'Domino\'s', 'DoorDash', 'Jimmy John\'s', 'bar', 'restaurant'].includes(expense.vendor)) {
+                    if (!['Cooked at home', 'Whole Foods', 'Costco', 'Walmart', 'Target', 'Wendy\'s', 'Domino\'s', 'DoorDash', 'Wonder', 'Uber Eats', 'Instacart', 'Jimmy John\'s', 'bar', 'restaurant'].includes(expense.vendor)) {
                         vendorSelect.value = 'other';
                         document.getElementById('vendor-other').value = expense.vendor;
                         otherField.style.display = 'block';
@@ -945,16 +981,18 @@
 
                     if (!fromDate || !toDate) {
                         document.getElementById('custom-range-average').textContent = '$0.00';
+                        this.updateAnalysisDisplay('date_range', 0);
                         return;
                     }
 
-                    const from = this.formatDateForDisplay(fromDate);
+                    const from = this.formatDateForDisplay(fromFrom);
                     const to = this.formatDateForDisplay(toDate);
 
                     // Check if toDate is before fromDate
                     if (to < from) {
                         alert("To date must be after from date");
                         document.getElementById('custom-range-average').textContent = '$0.00';
+                        this.updateAnalysisDisplay('date_range', 0);
                         return;
                     }
 
@@ -971,6 +1009,9 @@
                     const average = daysDiff > 0 ? total / daysDiff : 0;
 
                     document.getElementById('custom-range-average').textContent = `$${average.toFixed(2)}`;
+                    
+                    this.updateAnalysisDisplay('date_range', daysDiff);
+                    this.currentAnalysis = 'date_range';
                 }
 
                 calculatePastWeeks() {
@@ -995,12 +1036,21 @@
                     // Update week count display
                     document.getElementById('weeks-count').textContent = this.weeksCount;
                     
-                    // Update current week range display
-                    const startDate = new Date(now);
-                    startDate.setDate(startDate.getDate() - (this.weeksCount * 7 - 1));
+                    this.updateAnalysisDisplay('weeks', this.weeksCount);
+                    this.currentAnalysis = 'weeks';
+                }
+
+                updateAnalysisDisplay(type, value) {
+                    const displayElement = document.getElementById('current-analysis-display');
+                    const typeElement = document.getElementById('current-analysis-type');
                     
-                    document.getElementById('current-week-range').textContent = 
-                        `${startDate.toLocaleDateString()} to ${now.toLocaleDateString()}`;
+                    if (type === 'weeks') {
+                        typeElement.textContent = `${value} Week${value > 1 ? 's' : ''} Average`;
+                        displayElement.textContent = `Last ${value} week${value > 1 ? 's' : ''}`;
+                    } else {
+                        typeElement.textContent = 'Custom Range Average';
+                        displayElement.textContent = 'Custom Date Range';
+                    }
                 }
 
                 increaseWeeks() {
