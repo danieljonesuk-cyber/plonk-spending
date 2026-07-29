@@ -739,6 +739,7 @@
                             // Skip header row and parse expenses
                             for (let i = 1; i < result.values.length; i++) {
                                 const row = result.values[i];
+                                // Make sure we have sufficient columns
                                 if (row.length >= 6) {
                                     this.expenses.push({
                                         id: row[0], // ID from column 1
@@ -748,6 +749,8 @@
                                         category: row[4],
                                         amount: parseFloat(row[5])
                                     });
+                                } else {
+                                    console.warn("Row " + i + " has insufficient columns:", row);
                                 }
                             }
                         }
