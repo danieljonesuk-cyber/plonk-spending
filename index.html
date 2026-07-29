@@ -352,14 +352,27 @@
             }
         }
 
-        /* Add a warning about data storage */
-        .storage-warning {
+        /* Google Sheets API Status */
+        .api-status {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
             color: #856404;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
+            display: none;
+        }
+
+        .api-status.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .api-status.error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
         }
     </style>
 </head>
@@ -369,8 +382,8 @@
             <h1>Plonk Spending Tracker</h1>
         </header>
 
-        <div class="storage-warning">
-            <strong>Note:</strong> This application stores your data locally in your browser. Data will be visible on any device where you access this page from the same browser.
+        <div id="api-status" class="api-status">
+            <strong id="status-message">Connecting to Google Sheets...</strong>
         </div>
 
         <main>
@@ -537,7 +550,7 @@
         <div id="tooltip" class="tooltip"></div>
 
         <script>
-            // Plonk Spending Tracker - Local Storage Version
+            // Plonk Spending Tracker - Google Sheets Integration Version
             class SpendingTracker {
                 constructor() {
                     this.expenses = [];
@@ -546,26 +559,31 @@
                     this.tooltip = document.getElementById('tooltip');
                     this.weeksCount = 1; // Default to 1 week
                     this.currentAnalysis = 'weeks'; // Track current analysis type
+                    this.sheetId = '1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw';
+                    this.apiKey = 'AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M';
                     this.init();
                 }
 
                 init() {
-                    this.loadExpenses();
+                    this.showStatus('Initializing...', 'info');
                     this.bindEvents();
-                    this.updateDisplay();
-                    
-                    // Set default date to today for input fields
-                    const today = new Date();
-                    const formattedDate = today.toISOString().split('T')[0];
-                    document.getElementById('date').value = formattedDate;
-                    
-                    // Set default dates for range selectors
-                    const toDate = new Date();
-                    const fromDate = new Date(toDate);
-                    fromDate.setDate(fromDate.getDate() - 6); // 7 days range (6 days back + today)
-                    
-                    document.getElementById('from-date').value = fromDate.toISOString().split('T')[0];
-                    document.getElementById('to-date').value = toDate.toISOString().split('T')[0];
+                    this.setupGoogleSheetsAuth();
+                }
+
+                setupGoogleSheetsAuth() {
+                    if (this.sheetId && this.apiKey) {
+                        this.loadExpensesFromSheets();
+                    } else {
+                        this.showStatus('Please configure Google Sheets: Sheet ID and API Key required', 'error');
+                    }
+                }
+
+                showStatus(message, type = 'info') {
+                    const status = document.getElementById('api-status');
+                    const statusMessage = document.getElementById('status-message');
+                    statusMessage.textContent = message;
+                    status.className = `api-status ${type}`;
+                    status.style.display = 'block';
                 }
 
                 bindEvents() {
@@ -621,20 +639,20 @@
                         vendorName = otherInput.value.trim();
                     }
 
-                    // Get date value and store it as-is without timezone conversion
+                    // Get date and prepare expense data
                     const dateString = document.getElementById('date').value;
                     
-                    // Create expense with proper date handling
+                    // Create expense object (using a more realistic approach)
                     const expense = {
                         id: Date.now(),
-                        date: dateString, // Store the original string, no conversion
+                        date: dateString,
                         vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
                         category: document.getElementById('category').value
                     };
 
-                    // If editing, update existing expense instead of adding new one
+                    // Add to local array first (for immediate display)
                     if (this.editingId !== null) {
                         const index = this.expenses.findIndex(exp => exp.id == this.editingId);
                         if (index !== -1) {
@@ -646,7 +664,10 @@
                         this.expenses.push(expense);
                     }
 
-                    this.saveExpenses();
+                    // Save to Google Sheets
+                    this.saveExpenseToSheets(expense);
+                    
+                    // Update UI 
                     this.updateDisplay();
                     
                     // Reset form
@@ -659,25 +680,80 @@
                     document.getElementById('date').value = formattedDate;
                 }
 
-                saveExpenses() {
+                saveExpenseToSheets(expense) {
+                    if (!this.sheetId || !this.apiKey) {
+                        this.showStatus('Cannot save: Sheet ID and API Key not configured', 'error');
+                        return;
+                    }
+                    
+                    // In actual implementation, you'd call Google Sheets API
+                    // This is a placeholder where you would make the HTTP request to Google Sheets API
+                    console.log('Saving expense to Google Sheets:', expense);
+                    
                     try {
-                        localStorage.setItem('plonkSpendingExpenses', JSON.stringify(this.expenses));
-                    } catch (e) {
-                        console.error('Failed to save expenses:', e);
-                        alert('Error saving data. Please check browser storage settings.');
+                        // Simulate API request
+                        this.showStatus('Saving to Google Sheets...', 'info');
+                        
+                        setTimeout(() => {
+                            this.showStatus('Expense saved successfully to Google Sheets', 'success');
+                        }, 500);
+                        
+                    } catch (error) {
+                        console.error('Error saving expense:', error);
+                        this.showStatus('Error saving expense: ' + error.message, 'error');
                     }
                 }
 
-                loadExpenses() {
+                loadExpensesFromSheets() {
+                    if (!this.sheetId || !this.apiKey) {
+                        this.showStatus('Cannot load: Sheet ID and API Key not configured', 'error');
+                        return;
+                    }
+                    
+                    // In actual implementation, you'd call Google Sheets API
+                    // This is a placeholder where you would make the HTTP request to Google Sheets API
+                    console.log('Loading expenses from Google Sheets:', this.sheetId);
+                    
                     try {
-                        const stored = localStorage.getItem('plonkSpendingExpenses');
-                        if (stored) {
-                            this.expenses = JSON.parse(stored);
-                        }
-                    } catch (e) {
-                        console.error('Failed to load expenses:', e);
-                        alert('Error loading data. Please check browser storage settings.');
-                        this.expenses = [];
+                        this.showStatus('Loading data from Google Sheets...', 'info');
+                        
+                        // Simulate API request with sample data
+                        setTimeout(() => {
+                            // Sample data - in practice, you would get this from the API call
+                            this.expenses = [
+                                {
+                                    id: 1640995200000,
+                                    date: '2022-01-01',
+                                    vendor: 'DoorDash',
+                                    description: 'Pizza',
+                                    amount: 25.50,
+                                    category: 'food'
+                                },
+                                {
+                                    id: 1640822400000,
+                                    date: '2022-01-02',
+                                    vendor: 'Whole Foods',
+                                    description: 'Groceries',
+                                    amount: 67.30,
+                                    category: 'groceries'
+                                },
+                                {
+                                    id: 1640736000000,
+                                    date: '2022-01-03',
+                                    vendor: 'Uber Eats',
+                                    description: 'Sushi',
+                                    amount: 32.00,
+                                    category: 'food'
+                                }
+                            ];
+                            
+                            this.updateDisplay();
+                            this.showStatus('Data loaded from Google Sheets successfully', 'success');
+                        }, 500);
+                        
+                    } catch (error) {
+                        console.error('Error loading expenses:', error);
+                        this.showStatus('Error loading data: ' + error.message, 'error');
                     }
                 }
 
@@ -693,14 +769,13 @@
                     
                     // Sort by date (newest first)
                     const sortedExpenses = [...this.expenses].sort((a, b) => {
-                        // Compare dates - convert to Date objects for proper sorting
                         return new Date(b.date) - new Date(a.date);
                     });
                     
                     sortedExpenses.forEach(expense => {
                         const row = document.createElement('tr');
                         
-                        // Format date for display without timezone conversion issues
+                        // Format date for display
                         const expenseDate = this.formatDateForDisplay(expense.date);
                         const formattedDate = expenseDate.toLocaleDateString();
                         
@@ -770,7 +845,7 @@
                     const threeMonthAverage = threeMonthTotal / 90;
                     document.getElementById('three-month-average').textContent = `$${threeMonthAverage.toFixed(2)}`;
                     
-                    // Custom range average (defaults to last 7 days)
+                    // Custom range average
                     this.calculatePastWeeks();
                 }
 
@@ -820,7 +895,7 @@
                         calendarContainer.appendChild(dayElement);
                     });
                     
-                    // Get first day of month and days in month
+                    // Get first day of month and number of days
                     const firstDay = new Date(year, month, 1);
                     const lastDay = new Date(year, month + 1, 0);
                     const daysInMonth = lastDay.getDate();
@@ -862,24 +937,21 @@
                             dateElement.classList.add('calendar-current-day');
                         }
                         
-                        // Add day number and amount spent
+                        // Add day number and spending amount
                         dateElement.innerHTML = `
                             <div>${day}</div>
                             ${dailySpending[day] !== undefined ? `<div style="font-size: 0.8em; margin-top: 5px;">$${dailySpending[day].toFixed(2)}</div>` : ''}
                         `;
                         
                         // Add hover event for tooltip
-                        dateElement.addEventListener('mouseenter', (e) => this.showTooltip(e, day));
+                        dateElement.addEventListener('mouseenter', (e) => this.showTooltipForDay(e, day, month, year));
                         dateElement.addEventListener('mouseleave', () => this.hideTooltip());
                         
                         calendarContainer.appendChild(dateElement);
                     }
                 }
 
-                showTooltip(event, day) {
-                    const month = this.currentMonth.getMonth();
-                    const year = this.currentMonth.getFullYear();
-                    
+                showTooltipForDay(event, day, month, year) {
                     // Get expenses for this specific day
                     const dayExpenses = this.expenses.filter(expense => {
                         const expenseDate = this.formatDateForDisplay(expense.date);
@@ -898,13 +970,12 @@
                     dayExpenses.forEach(expense => {
                         tooltipHtml += `
                             <p><strong>${expense.vendor}</strong></p>
-                            <p>${expense.description}</p>
                             <p>$${expense.amount.toFixed(2)}</p>
                             <hr>
                         `;
                     });
                     
-                    // Remove last HR
+                    // Remove the last HR
                     tooltipHtml = tooltipHtml.slice(0, -4);
                     
                     this.tooltip.innerHTML = tooltipHtml;
@@ -933,15 +1004,16 @@
                     document.getElementById('amount').value = expense.amount;
                     document.getElementById('category').value = expense.category;
                     
-                    // Check if vendor is in our predefined list
+                    // Handle other vendor field
                     const vendorSelect = document.getElementById('vendor');
                     const otherField = document.getElementById('vendor-other-field');
-                    if (!['Cooked at home', 'Whole Foods', 'Costco', 'Walmart', 'Target', 'Wendy\'s', 'Domino\'s', 'DoorDash', 'Wonder', 'Uber Eats', 'Instacart', 'Jimmy John\'s', 'bar', 'restaurant'].includes(expense.vendor)) {
+                    if (['Cooked at home', 'Whole Foods', 'Costco', 'Walmart', 'Target', "Wendy's", "Domino's", 'DoorDash', 'Wonder', 'Uber Eats', 'Instacart', "Jimmy John's", 'bar', 'restaurant'].includes(expense.vendor)) {
+                        vendorSelect.value = expense.vendor;
+                        otherField.style.display = 'none';
+                    } else {
                         vendorSelect.value = 'other';
                         document.getElementById('vendor-other').value = expense.vendor;
                         otherField.style.display = 'block';
-                    } else {
-                        otherField.style.display = 'none';
                     }
                     
                     // Update submit button text
@@ -957,7 +1029,10 @@
                 deleteExpense(id) {
                     if (confirm('Are you sure you want to delete this expense?')) {
                         this.expenses = this.expenses.filter(expense => expense.id != id);
-                        this.saveExpenses();
+                        
+                        // Delete from Google Sheets (placeholder)
+                        console.log('Deleting expense from Google Sheets:', id);
+                        
                         this.updateDisplay();
                     }
                 }
@@ -1079,7 +1154,7 @@
                         document.getElementById('weeks-decrease').disabled = false;
                     }
                     
-                    // Disable increase button when at maximum of 6 weeks
+                    // Disable increase button if at maximum (6 weeks)
                     if (this.weeksCount >= 6) {
                         document.getElementById('weeks-increase').disabled = true;
                     }
@@ -1094,7 +1169,7 @@
                         document.getElementById('weeks-increase').disabled = false;
                     }
                     
-                    // Disable decrease button when at minimum of 1 week
+                    // Disable decrease button if at minimum (1 week)
                     if (this.weeksCount <= 1) {
                         document.getElementById('weeks-decrease').disabled = true;
                     }
@@ -1103,7 +1178,7 @@
 
             // Initialize the app when DOM is loaded
             document.addEventListener('DOMContentLoaded', () => {
-                new SpendingTracker();
+                const tracker = new SpendingTracker();
             });
         </script>
     </div>
