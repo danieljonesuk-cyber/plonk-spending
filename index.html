@@ -685,9 +685,11 @@
                         // Construct the Google Sheets API URL
                         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1:append?key=${API_KEY}`;
                         
-                        // Prepare the data for Sheet
+                        // Prepare the data for Sheet in correct order: id,date,vendor,description,category,amount
+                        // We'll use timestamp as ID for simplicity
+                        const id = Date.now().toString();
                         const values = [
-                            [expense.date, expense.vendor, expense.description, expense.category, expense.amount]
+                            [id, expense.date, expense.vendor, expense.description, expense.category, expense.amount]
                         ];
                         
                         const requestBody = {
@@ -719,6 +721,7 @@
                     this.showStatus('Loading data from Google Sheets...', 'info');
                     
                     try {
+                        // Try direct sheet access first
                         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1?key=${API_KEY}`;
                         
                         const response = await fetch(url);
@@ -754,7 +757,15 @@
                         
                     } catch (error) {
                         console.error("Error loading expenses:", error);
-                        this.showStatus('Error loading data: ' + error.message, 'error');
+                        
+                        // Fallback to sample data if sheet fails
+                        this.expenses = [
+                            { id: 1, date: "2022-01-01", vendor: "Test Store", description: "Sample expense", category: "food", amount: 15.50 },
+                            { id: 2, date: "2022-02-01", vendor: "Another Store", description: "Sample expense", category: "groceries", amount: 25.75 }
+                        ];
+                        
+                        this.updateDisplay();
+                        this.showStatus('Loaded sample data (Sheet connection failed)', 'error');
                     }
                 }
 
