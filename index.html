@@ -739,14 +739,14 @@
                             // Skip header row and parse expenses
                             for (let i = 1; i < result.values.length; i++) {
                                 const row = result.values[i];
-                                if (row.length >= 5) {
+                                if (row.length >= 6) {
                                     this.expenses.push({
-                                        id: i, // Using row index as ID
-                                        date: row[0],
-                                        vendor: row[1],
-                                        description: row[2],
-                                        category: row[3],
-                                        amount: parseFloat(row[4])
+                                        id: row[0], // ID from column 1
+                                        date: row[1],
+                                        vendor: row[2],
+                                        description: row[3],
+                                        category: row[4],
+                                        amount: parseFloat(row[5])
                                     });
                                 }
                             }
