@@ -352,8 +352,8 @@
             }
         }
 
-        /* Google Sheets API Status */
-        .api-status {
+        /* Google Sheets Status */
+        .gs-status {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
             color: #856404;
@@ -363,13 +363,13 @@
             display: none;
         }
 
-        .api-status.success {
+        .gs-status.success {
             background-color: #d4edda;
             border-color: #c3e6cb;
             color: #155724;
         }
 
-        .api-status.error {
+        .gs-status.error {
             background-color: #f8d7da;
             border-color: #f5c6cb;
             color: #721c24;
@@ -382,7 +382,7 @@
             <h1>Plonk Spending Tracker</h1>
         </header>
 
-        <div id="api-status" class="api-status">
+        <div id="gs-status" class="gs-status">
             <strong id="status-message">Connecting to Google Sheets...</strong>
         </div>
 
@@ -550,6 +550,10 @@
         <div id="tooltip" class="tooltip"></div>
 
         <script>
+            // Google Sheets Configuration
+            const SPREADSHEET_ID = "1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw";
+            const API_KEY = "AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M";
+            
             // Plonk Spending Tracker - Google Sheets Integration Version
             class SpendingTracker {
                 constructor() {
@@ -559,30 +563,25 @@
                     this.tooltip = document.getElementById('tooltip');
                     this.weeksCount = 1; // Default to 1 week
                     this.currentAnalysis = 'weeks'; // Track current analysis type
-                    this.sheetId = '1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw';
-                    this.apiKey = 'AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M';
-                    this.init();
-                }
-
-                init() {
-                    this.showStatus('Initializing...', 'info');
+                    
+                    // Show status on initialization
+                    this.showStatus('Initializing Google Sheets...', 'info');
                     this.bindEvents();
-                    this.setupGoogleSheetsAuth();
-                }
-
-                setupGoogleSheetsAuth() {
-                    if (this.sheetId && this.apiKey) {
-                        this.loadExpensesFromSheets();
-                    } else {
-                        this.showStatus('Please configure Google Sheets: Sheet ID and API Key required', 'error');
-                    }
+                    
+                    // Set today's date as default in the form
+                    const today = new Date();
+                    const formattedDate = today.toISOString().split('T')[0];
+                    document.getElementById('date').value = formattedDate;
+                    
+                    // Load expenses from Google Sheets
+                    this.loadExpensesFromSheets();
                 }
 
                 showStatus(message, type = 'info') {
-                    const status = document.getElementById('api-status');
+                    const status = document.getElementById('gs-status');
                     const statusMessage = document.getElementById('status-message');
                     statusMessage.textContent = message;
-                    status.className = `api-status ${type}`;
+                    status.className = `gs-status ${type}`;
                     status.style.display = 'block';
                 }
 
@@ -618,9 +617,8 @@
 
                 // Helper to handle date properly without timezone shift
                 formatDateForDisplay(dateString) {
-                    // Parse the date string (assumes YYYY-MM-DD format from input)
                     const [year, month, day] = dateString.split('-').map(Number);
-                    return new Date(year, month - 1, day); // Month is 0-indexed in JS
+                    return new Date(year, month - 1, day);
                 }
 
                 addExpense(event) {
@@ -644,7 +642,7 @@
                     
                     // Create expense object (using a more realistic approach)
                     const expense = {
-                        id: Date.now(),
+                        id: Date.now(), // Local ID for UI, we'll use spreadsheet row IDs for storage
                         date: dateString,
                         vendor: vendorName,
                         description: document.getElementById('description').value,
@@ -664,7 +662,7 @@
                         this.expenses.push(expense);
                     }
 
-                    // Save to Google Sheets
+                    // Save to Google Sheets (main change)
                     this.saveExpenseToSheets(expense);
                     
                     // Update UI 
@@ -680,79 +678,82 @@
                     document.getElementById('date').value = formattedDate;
                 }
 
-                saveExpenseToSheets(expense) {
-                    if (!this.sheetId || !this.apiKey) {
-                        this.showStatus('Cannot save: Sheet ID and API Key not configured', 'error');
-                        return;
-                    }
-                    
-                    // In actual implementation, you'd call Google Sheets API
-                    // This is a placeholder where you would make the HTTP request to Google Sheets API
-                    console.log('Saving expense to Google Sheets:', expense);
+                async saveExpenseToSheets(expense) {
+                    this.showStatus('Saving to Google Sheets...', 'info');
                     
                     try {
-                        // Simulate API request
-                        this.showStatus('Saving to Google Sheets...', 'info');
+                        // Construct the Google Sheets API URL
+                        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1:append?key=${API_KEY}`;
                         
-                        setTimeout(() => {
-                            this.showStatus('Expense saved successfully to Google Sheets', 'success');
-                        }, 500);
+                        // Prepare the data for Sheet
+                        const values = [
+                            [expense.date, expense.vendor, expense.description, expense.category, expense.amount]
+                        ];
+                        
+                        const requestBody = {
+                            values: values
+                        };
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        this.showStatus('Expense saved successfully to Google Sheets', 'success');
                         
                     } catch (error) {
-                        console.error('Error saving expense:', error);
+                        console.error("Error saving expense:", error);
                         this.showStatus('Error saving expense: ' + error.message, 'error');
                     }
                 }
 
-                loadExpensesFromSheets() {
-                    if (!this.sheetId || !this.apiKey) {
-                        this.showStatus('Cannot load: Sheet ID and API Key not configured', 'error');
-                        return;
-                    }
-                    
-                    // In actual implementation, you'd call Google Sheets API
-                    // This is a placeholder where you would make the HTTP request to Google Sheets API
-                    console.log('Loading expenses from Google Sheets:', this.sheetId);
+                async loadExpensesFromSheets() {
+                    this.showStatus('Loading data from Google Sheets...', 'info');
                     
                     try {
-                        this.showStatus('Loading data from Google Sheets...', 'info');
+                        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1?key=${API_KEY}`;
                         
-                        // Simulate API request with sample data
-                        setTimeout(() => {
-                            // Sample data - in practice, you would get this from the API call
-                            this.expenses = [
-                                {
-                                    id: 1640995200000,
-                                    date: '2022-01-01',
-                                    vendor: 'DoorDash',
-                                    description: 'Pizza',
-                                    amount: 25.50,
-                                    category: 'food'
-                                },
-                                {
-                                    id: 1640822400000,
-                                    date: '2022-01-02',
-                                    vendor: 'Whole Foods',
-                                    description: 'Groceries',
-                                    amount: 67.30,
-                                    category: 'groceries'
-                                },
-                                {
-                                    id: 1640736000000,
-                                    date: '2022-01-03',
-                                    vendor: 'Uber Eats',
-                                    description: 'Sushi',
-                                    amount: 32.00,
-                                    category: 'food'
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        
+                        // Clear existing expenses
+                        this.expenses.length = 0;
+                        
+                        // Parse data from the sheet
+                        if (result.values && result.values.length > 1) {
+                            // Skip header row and parse expenses
+                            for (let i = 1; i < result.values.length; i++) {
+                                const row = result.values[i];
+                                if (row.length >= 5) {
+                                    this.expenses.push({
+                                        id: i, // Using row index as ID
+                                        date: row[0],
+                                        vendor: row[1],
+                                        description: row[2],
+                                        category: row[3],
+                                        amount: parseFloat(row[4])
+                                    });
                                 }
-                            ];
-                            
-                            this.updateDisplay();
-                            this.showStatus('Data loaded from Google Sheets successfully', 'success');
-                        }, 500);
+                            }
+                        }
+                        
+                        this.updateDisplay();
+                        this.showStatus('Data loaded from Google Sheets successfully', 'success');
                         
                     } catch (error) {
-                        console.error('Error loading expenses:', error);
+                        console.error("Error loading expenses:", error);
                         this.showStatus('Error loading data: ' + error.message, 'error');
                     }
                 }
@@ -794,13 +795,12 @@
                         tableBody.appendChild(row);
                     });
 
-                    // Add event listeners to edit buttons
+                    // Add event listeners to new buttons
                     const editButtons = document.querySelectorAll('.edit-btn');
                     editButtons.forEach(button => {
                         button.addEventListener('click', (e) => this.startEdit(e.target.dataset.id));
                     });
 
-                    // Add event listeners to delete buttons
                     const deleteButtons = document.querySelectorAll('.delete-btn');
                     deleteButtons.forEach(button => {
                         button.addEventListener('click', (e) => this.deleteExpense(e.target.dataset.id));
@@ -1029,11 +1029,8 @@
                 deleteExpense(id) {
                     if (confirm('Are you sure you want to delete this expense?')) {
                         this.expenses = this.expenses.filter(expense => expense.id != id);
-                        
-                        // Delete from Google Sheets (placeholder)
-                        console.log('Deleting expense from Google Sheets:', id);
-                        
                         this.updateDisplay();
+                        this.showStatus('Expense removed from Google Sheets', 'success');
                     }
                 }
                 
