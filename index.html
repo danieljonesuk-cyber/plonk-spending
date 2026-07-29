@@ -615,10 +615,40 @@
                     document.getElementById('weeks-decrease').addEventListener('click', () => this.decreaseWeeks());
                 }
 
-                // Helper to handle date properly without timezone shift
-                formatDateForDisplay(dateString) {
-                    const [year, month, day] = dateString.split('-').map(Number);
-                    return new Date(year, month - 1, day);
+                // Helper to parse date properly from sheet format MM/DD/YYYY
+                parseDateFromSheet(dateString) {
+                    if (!dateString || dateString === "") return null;
+                    
+                    // Handle Google Sheets date format (MM/DD/YYYY)
+                    const parts = dateString.split('/');
+                    if (parts.length === 3) {
+                        const month = parseInt(parts[0], 10);
+                        const day = parseInt(parts[1], 10);
+                        const year = parseInt(parts[2], 10);
+                        
+                        // Handle 2-digit year conversion
+                        const fullYear = year < 100 ? (year > 50 ? 1900 + year : 2000 + year) : year;
+                        
+                        return new Date(fullYear, month - 1, day);
+                    }
+                    
+                    // Fallback to standard parsing
+                    return new Date(dateString);
+                }
+
+                // Helper to handle date formatting for JavaScript dates
+                formatDateForDisplay(dateObj) {
+                    if (!dateObj || !(dateObj instanceof Date)) return "";
+                    return dateObj.toLocaleDateString();
+                }
+
+                // Helper to handle date formatting for the sheet
+                formatDateForSheet(dateObj) {
+                    if (!dateObj || !(dateObj instanceof Date)) return "";
+                    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                    const day = dateObj.getDate().toString().padStart(2, '0');
+                    const year = dateObj.getFullYear();
+                    return `${month}/${day}/${year}`;
                 }
 
                 addExpense(event) {
@@ -640,9 +670,9 @@
                     // Get date and prepare expense data
                     const dateString = document.getElementById('date').value;
                     
-                    // Create expense object (using a more realistic approach)
+                    // Create expense object 
                     const expense = {
-                        id: Date.now(), // Local ID for UI, we'll use spreadsheet row IDs for storage
+                        id: Date.now().toString(), // Use timestamp as ID
                         date: dateString,
                         vendor: vendorName,
                         description: document.getElementById('description').value,
@@ -662,7 +692,7 @@
                         this.expenses.push(expense);
                     }
 
-                    // Save to Google Sheets (main change)
+                    // Save to Google Sheets
                     this.saveExpenseToSheets(expense);
                     
                     // Update UI 
@@ -734,26 +764,28 @@
                         // Clear existing expenses
                         this.expenses.length = 0;
                         
-                        // Parse data from the sheet
-                        if (result.values && result.values.length > 1) {
-                            // Skip header row and parse expenses
-                            for (let i = 1; i < result.values.length; i++) {
-                                const row = result.values[i];
-                                // Make sure we have sufficient columns
-                                if (row.length >= 6) {
-                                    this.expenses.push({
-                                        id: row[0], // ID from column 1
-                                        date: row[1],
-                                        vendor: row[2],
-                                        description: row[3],
-                                        category: row[4],
-                                        amount: parseFloat(row[5])
-                                    });
-                                } else {
-                                    console.warn("Row " + i + " has insufficient columns:", row);
-                                }
+                    // Parse data from the sheet
+                    if (result.values && result.values.length > 1) {
+                        // Skip header row and parse expenses
+                        for (let i = 1; i < result.values.length; i++) {
+                            const row = result.values[i];
+                            // Make sure we have sufficient columns
+                            if (row.length >= 6) {
+                                const dateObj = this.parseDateFromSheet(row[1]);
+                                
+                                this.expenses.push({
+                                    id: row[0], // ID from column 1
+                                    date: dateObj ? this.formatDateForSheet(dateObj) : "", // Store as MM/DD/YYYY for form
+                                    vendor: row[2],
+                                    description: row[3],
+                                    category: row[4],
+                                    amount: parseFloat(row[5])
+                                });
+                            } else {
+                                console.warn("Row " + i + " has insufficient columns:", row);
                             }
                         }
+                    }
                         
                         this.updateDisplay();
                         this.showStatus('Data loaded from Google Sheets successfully', 'success');
