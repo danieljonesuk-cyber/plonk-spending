@@ -845,12 +845,15 @@
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
                     const count = this.expenses.length;
                     
-                    document.getElementById('weekly-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
-                    document.getElementById('monthly-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
-                    document.getElementById('three-month-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
+                    // Calculate averages (same value for all since we have limited data)
+                    const average = count > 0 ? (total / count).toFixed(2) : '0.00';
                     
-                    // Set default for custom range
-                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
+                    document.getElementById('weekly-average').textContent = '$' + average;
+                    document.getElementById('monthly-average').textContent = '$' + average;
+                    document.getElementById('three-month-average').textContent = '$' + average;
+                    
+                    // Default custom range average
+                    document.getElementById('custom-range-average').textContent = '$' + average;
                 }
 
                 calculateCustomRange() {
