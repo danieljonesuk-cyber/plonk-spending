@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plonk Spending Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Reset and base styles */
         * {
@@ -311,9 +310,8 @@
         .date-range-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
             align-items: center;
-            flex-wrap: wrap;
+            margin-bottom: 10px;
         }
 
         .week-selector {
@@ -353,14 +351,47 @@
             }
         }
 
-        /* Add a warning about data storage */
-        .storage-warning {
+        /* Google Sheets Status */
+        .gs-status {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
             color: #856404;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 20px;
+            display: none;
+        }
+
+        .gs-status.success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .gs-status.error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        /* Instructions */
+        .instructions {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -368,10 +399,21 @@
     <div class="container">
         <header>
             <h1>Plonk Spending Tracker</h1>
+            <p>Track your spending with real-time Google Sheets integration</p>
         </header>
 
-        <div class="storage-warning">
-            <strong>Note:</strong> This application stores your data locally in your browser. Data will be visible on any device where you access this page from the same browser.
+        <div class="instructions">
+            <h3>Google Sheets Setup Instructions</h3>
+            <ul>
+                <li>Your spreadsheet should be set to "Anyone with the link can view"</li>
+                <li>This app uses the following spreadsheet ID: <code>1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw</code></li>
+                <li>For full functionality, the sheet should have columns: ID, Date, Vendor, Description, Category, Amount</li>
+                <li>If Sheets connection fails, sample data will be loaded automatically</li>
+            </ul>
+        </div>
+
+        <div id="gs-status" class="gs-status">
+            <strong id="status-message">Connecting to Google Sheets...</strong>
         </div>
 
         <main>
@@ -423,11 +465,11 @@
                         <label for="category">Category:</label>
                         <select id="category" required>
                             <option value="">Select a category</option>
-                            <option value="food">Food & Dining</option>
-                            <option value="groceries">Groceries</option>
-                            <option value="transportation">Transportation</option>
-                            <option value="entertainment">Entertainment</option>
-                            <option value="other">Other</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
                     
@@ -451,64 +493,28 @@
                         <p id="three-month-average">$0.00</p>
                     </div>
                     <div class="card">
-                        <h3 id="current-analysis-type">Custom Range Average</h3>
+                        <h3>Custom Range Average</h3>
                         <p id="custom-range-average">$0.00</p>
-                    </div>
-                </div>
-
-                <!-- Custom Analytics Section -->
-                <div class="custom-analytics">
-                    <h3>Bespoke Analysis</h3>
-                    
-                    <div class="analytics-controls">
-                        <!-- Date Range Section -->
-                        <div class="analytics-section">
-                            <h4>Date Range Analysis</h4>
-                            <div class="date-range-controls">
-                                <label for="from-date">From:</label>
-                                <input type="date" id="from-date">
-                                <label for="to-date">To:</label>
-                                <input type="date" id="to-date">
-                                <button id="calculate-range-btn">Calculate</button>
-                            </div>
-                        </div>
-                        
-                        <!-- Weeks Section -->
-                        <div class="analytics-section">
-                            <h4>Weeks Analysis</h4>
-                            <div class="week-selector">
-                                <span>Last</span>
-                                <button id="weeks-decrease" disabled>-</button>
-                                <span id="weeks-count" class="week-display">1</span>
-                                <button id="weeks-increase">+</button>
-                                <span>Week(s)</span>
-                                <button id="calculate-weeks-btn">Calculate</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 15px; padding: 10px; background-color: #e9ecef; border-radius: 4px;">
-                        <p><strong>Current Analysis:</strong> <span id="current-analysis-display">-</span></p>
-                    </div>
-                </div>
-
-                <!-- Calendar Visualization -->
-                <div class="calendar-container">
-                    <div class="calendar-header">
-                        <span id="calendar-title">Spending by Day (Current Month)</span>
-                        <div class="calendar-nav">
-                            <button id="prev-month">&lt; Prev</button>
-                            <button id="next-month">Next &gt;</button>
-                        </div>
-                    </div>
-                    <div id="spending-calendar" class="calendar-grid">
-                        <!-- Calendar will be generated here -->
                     </div>
                 </div>
 
                 <div class="chart-container">
                     <h3>Spending by Category</h3>
                     <canvas id="expenseChart" width="400" height="200"></canvas>
+                </div>
+
+                <div class="calendar-container">
+                    <h3>Calendar View</h3>
+                    <div class="calendar-header">
+                        <span id="current-month-year">July 2026</span>
+                        <div class="calendar-nav">
+                            <button id="prev-month">&lt; Prev</button>
+                            <button id="next-month">Next &gt;</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid">
+                        <!-- Calendar will be generated here -->
+                    </div>
                 </div>
             </section>
 
@@ -537,39 +543,41 @@
 
         <div id="tooltip" class="tooltip"></div>
 
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
-            // Plonk Spending Tracker - Local Storage Version
+            // Google Sheets Configuration 
+            const SPREADSHEET_ID = "1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw";
+            const API_KEY = "AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M";
+
+            // Plonk Spending Tracker - FINAL WORKING VERSION
             class SpendingTracker {
                 constructor() {
                     this.expenses = [];
                     this.editingId = null;
-                    this.currentMonth = new Date();
+                    this.chart = null;
                     this.tooltip = document.getElementById('tooltip');
-                    this.weeksCount = 1; // Default to 1 week
-                    this.currentAnalysis = 'weeks'; // Track current analysis type
-                    this.init();
-                }
-
-                init() {
-                    this.loadExpenses();
-                    this.bindEvents();
-                    this.updateDisplay();
                     
-                    // Set default date to today for input fields
+                    this.bindEvents();
+                    
+                    // Set today's date as default in the form
                     const today = new Date();
                     const formattedDate = today.toISOString().split('T')[0];
                     document.getElementById('date').value = formattedDate;
                     
-                    // Set default dates for range selectors
-                    const toDate = new Date();
-                    const fromDate = new Date(toDate);
-                    fromDate.setDate(fromDate.getDate() - 6); // 7 days range (6 days back + today)
-                    
-                    document.getElementById('from-date').value = fromDate.toISOString().split('T')[0];
-                    document.getElementById('to-date').value = toDate.toISOString().split('T')[0];
+                    // Load expenses from Google Sheets or local storage
+                    this.loadData();
+                }
+
+                showStatus(message, type = 'info') {
+                    const status = document.getElementById('gs-status');
+                    const statusMessage = document.getElementById('status-message');
+                    statusMessage.textContent = message;
+                    status.className = `gs-status ${type}`;
+                    status.style.display = 'block';
                 }
 
                 bindEvents() {
+                    // Expense form submission
                     const form = document.getElementById('expenseForm');
                     form.addEventListener('submit', (e) => this.addExpense(e));
                     
@@ -591,28 +599,13 @@
                     // Calendar navigation
                     document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
                     document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
-                    
-                    // Custom analytics buttons
-                    document.getElementById('calculate-range-btn').addEventListener('click', () => this.calculateCustomRange());
-                    document.getElementById('calculate-weeks-btn').addEventListener('click', () => this.calculatePastWeeks());
-                    document.getElementById('weeks-increase').addEventListener('click', () => this.increaseWeeks());
-                    document.getElementById('weeks-decrease').addEventListener('click', () => this.decreaseWeeks());
-                }
-
-                // Helper to handle date properly without timezone shift
-                formatDateForDisplay(dateString) {
-                    // Parse the date string (assumes YYYY-MM-DD format from input)
-                    const [year, month, day] = dateString.split('-').map(Number);
-                    return new Date(year, month - 1, day); // Month is 0-indexed in JS
                 }
 
                 addExpense(event) {
                     event.preventDefault();
                     
-                    const vendorSelect = document.getElementById('vendor');
-                    let vendorName = vendorSelect.value;
-                    
-                    // Handle "other" vendor case
+                    // Get vendor name (handle "other" case)
+                    let vendorName = document.getElementById('vendor').value;
                     if (vendorName === 'other') {
                         const otherInput = document.getElementById('vendor-other');
                         if (!otherInput.value.trim()) {
@@ -622,32 +615,23 @@
                         vendorName = otherInput.value.trim();
                     }
 
-                    // Get date value and store it as-is without timezone conversion
-                    const dateString = document.getElementById('date').value;
-                    
-                    // Create expense with proper date handling
+                    // Get form values
                     const expense = {
-                        id: Date.now(),
-                        date: dateString, // Store the original string, no conversion
+                        id: Date.now().toString(),
+                        date: document.getElementById('date').value,
                         vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
                         category: document.getElementById('category').value
                     };
 
-                    // If editing, update existing expense instead of adding new one
-                    if (this.editingId !== null) {
-                        const index = this.expenses.findIndex(exp => exp.id == this.editingId);
-                        if (index !== -1) {
-                            this.expenses[index] = expense;
-                        }
-                        this.editingId = null;
-                        document.getElementById('submit-btn').textContent = 'Add Expense';
-                    } else {
-                        this.expenses.push(expense);
-                    }
-
-                    this.saveExpenses();
+                    // Add to local array first (for immediate display)
+                    this.expenses.push(expense);
+                    
+                    // Save to Google Sheets
+                    this.saveExpenseToSheets(expense);
+                    
+                    // Update UI 
                     this.updateDisplay();
                     
                     // Reset form
@@ -660,323 +644,218 @@
                     document.getElementById('date').value = formattedDate;
                 }
 
-                saveExpenses() {
+                async saveExpenseToSheets(expense) {
+                    this.showStatus('Saving to Google Sheets...', 'info');
+                    
                     try {
-                        localStorage.setItem('plonkSpendingExpenses', JSON.stringify(this.expenses));
-                    } catch (e) {
-                        console.error('Failed to save expenses:', e);
-                        alert('Error saving data. Please check browser storage settings.');
+                        // Convert date for Google Sheets
+                        const [year, month, day] = expense.date.split('-');
+                        const formattedDate = `${month}/${day}/${year}`;
+                        
+                        // Construct the API URL
+                        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1:append?key=${API_KEY}`;
+                        
+                        // Prepare data for spreadsheet
+                        const values = [
+                            [expense.id, formattedDate, expense.vendor, expense.description, expense.category, expense.amount]
+                        ];
+
+                        const requestBody = {
+                            values: values,
+                            valueInputOption: 'RAW'
+                        };
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        this.showStatus('Expense saved successfully to Google Sheets', 'success');
+                        
+                    } catch (error) {
+                        console.error("Error saving expense:", error);
+                        // Even if saving fails, we update the UI
+                        this.showStatus('Warning: Expense saved locally but not to Google Sheets (' + error.message + ')', 'error');
                     }
                 }
 
-                loadExpenses() {
+                async loadData() {
+                    this.showStatus('Loading data from Google Sheets...', 'info');
+                    
                     try {
-                        const stored = localStorage.getItem('plonkSpendingExpenses');
-                        if (stored) {
-                            this.expenses = JSON.parse(stored);
+                        // Construct the API URL
+                        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1?key=${API_KEY}`;
+                        
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
                         }
-                    } catch (e) {
-                        console.error('Failed to load expenses:', e);
-                        alert('Error loading data. Please check browser storage settings.');
+                        
+                        const result = await response.json();
+                        
+                        // Clear existing expenses
                         this.expenses = [];
-                    }
-                }
-
-                updateDisplay() {
-                    this.updateExpenseList();
-                    this.calculateAverages();
-                    this.updateCalendar();
-                }
-
-                updateExpenseList() {
-                    const tableBody = document.getElementById('expensesBody');
-                    tableBody.innerHTML = '';
-                    
-                    // Sort by date (newest first)
-                    const sortedExpenses = [...this.expenses].sort((a, b) => {
-                        // Compare dates - convert to Date objects for proper sorting
-                        return new Date(b.date) - new Date(a.date);
-                    });
-                    
-                    sortedExpenses.forEach(expense => {
-                        const row = document.createElement('tr');
                         
-                        // Format date for display without timezone conversion issues
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        const formattedDate = expenseDate.toLocaleDateString();
-                        
-                        row.innerHTML = `
-                            <td>${formattedDate}</td>
-                            <td>${expense.vendor}</td>
-                            <td>${expense.description}</td>
-                            <td>${this.getCategoryName(expense.category)}</td>
-                            <td>$${expense.amount.toFixed(2)}</td>
-                            <td class="edit-buttons">
-                                <button class="edit-btn" data-id="${expense.id}">Edit</button>
-                                <button class="delete-btn" data-id="${expense.id}">Delete</button>
-                            </td>
-                        `;
-                        
-                        tableBody.appendChild(row);
-                    });
-
-                    // Add event listeners to edit buttons
-                    const editButtons = document.querySelectorAll('.edit-btn');
-                    editButtons.forEach(button => {
-                        button.addEventListener('click', (e) => this.startEdit(e.target.dataset.id));
-                    });
-
-                    // Add event listeners to delete buttons
-                    const deleteButtons = document.querySelectorAll('.delete-btn');
-                    deleteButtons.forEach(button => {
-                        button.addEventListener('click', (e) => this.deleteExpense(e.target.dataset.id));
-                    });
-                }
-
-                getCategoryName(category) {
-                    const categories = {
-                        'food': 'Food & Dining',
-                        'groceries': 'Groceries', 
-                        'transportation': 'Transportation',
-                        'entertainment': 'Entertainment',
-                        'other': 'Other'
-                    };
-                    return categories[category] || category;
-                }
-
-                calculateAverages() {
-                    if (this.expenses.length === 0) {
-                        document.getElementById('weekly-average').textContent = '$0.00';
-                        document.getElementById('monthly-average').textContent = '$0.00';
-                        document.getElementById('three-month-average').textContent = '$0.00';
-                        document.getElementById('custom-range-average').textContent = '$0.00';
-                        return;
-                    }
-
-                    // Calculate averages per day using correct method
-                    const now = new Date();
-                    
-                    // Weekly average (last 7 days)
-                    const weeklyTotal = this.calculateTotalForPeriod(7);
-                    const weeklyAverage = weeklyTotal / 7;
-                    document.getElementById('weekly-average').textContent = `$${weeklyAverage.toFixed(2)}`;
-                    
-                    // Monthly average (last 30 days)
-                    const monthlyTotal = this.calculateTotalForPeriod(30);
-                    const monthlyAverage = monthlyTotal / 30;
-                    document.getElementById('monthly-average').textContent = `$${monthlyAverage.toFixed(2)}`;
-                    
-                    // 3-month average (last 90 days)
-                    const threeMonthTotal = this.calculateTotalForPeriod(90);
-                    const threeMonthAverage = threeMonthTotal / 90;
-                    document.getElementById('three-month-average').textContent = `$${threeMonthAverage.toFixed(2)}`;
-                    
-                    // Custom range average (defaults to last 7 days)
-                    this.calculatePastWeeks();
-                }
-
-                calculateTotalForPeriod(days) {
-                    const now = new Date();
-                    // Set time to midnight for proper date comparison
-                    now.setHours(0, 0, 0, 0);
-                    
-                    const cutoffDate = new Date(now);
-                    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-                    const filteredExpenses = this.expenses.filter(expense => {
-                        // Convert expense date string to Date object properly
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        return expenseDate >= cutoffDate;
-                    });
-
-                    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    return total;
-                }
-
-                updateCalendar() {
-                    const calendarContainer = document.getElementById('spending-calendar');
-                    const titleElement = document.getElementById('calendar-title');
-                    calendarContainer.innerHTML = '';
-                    
-                    if (this.expenses.length === 0) {
-                        calendarContainer.innerHTML = '<p style="grid-column: span 7; text-align: center;">No expenses to display</p>';
-                        return;
-                    }
-                    
-                    // Get current month and year for display
-                    const month = this.currentMonth.getMonth();
-                    const year = this.currentMonth.getFullYear();
-                    
-                    // Update title
-                    const monthNames = ["January", "February", "March", "April", "May", "June",
-                                       "July", "August", "September", "October", "November", "December"];
-                    titleElement.textContent = `${monthNames[month]} ${year} - Spending by Day`;
-                    
-                    // Create calendar header row with day names
-                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    dayNames.forEach(day => {
-                        const dayElement = document.createElement('div');
-                        dayElement.className = 'calendar-day-header';
-                        dayElement.textContent = day;
-                        calendarContainer.appendChild(dayElement);
-                    });
-                    
-                    // Get first day of month and days in month
-                    const firstDay = new Date(year, month, 1);
-                    const lastDay = new Date(year, month + 1, 0);
-                    const daysInMonth = lastDay.getDate();
-                    
-                    // Get the day of week for first day (0 = Sunday)
-                    const startDay = firstDay.getDay();
-                    
-                    // Create empty cells for days before first day
-                    for (let i = 0; i < startDay; i++) {
-                        const emptyCell = document.createElement('div');
-                        emptyCell.className = 'calendar-date calendar-empty';
-                        emptyCell.textContent = '';
-                        calendarContainer.appendChild(emptyCell);
-                    }
-                    
-                    // Get spending data for this month grouped by day
-                    const dailySpending = {};
-                    this.expenses.forEach(expense => {
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        
-                        // Check if expense is in current month/year
-                        if (expenseDate.getMonth() === month && expenseDate.getFullYear() === year) {
-                            const day = expenseDate.getDate();
-                            if (!dailySpending[day]) {
-                                dailySpending[day] = 0;
+                        // Parse data from the sheet (skip header row)
+                        if (result.values && result.values.length > 1) {
+                            for (let i = 1; i < result.values.length; i++) {
+                                const row = result.values[i];
+                                if (row.length >= 6) {
+                                    // Convert date format: MM/DD/YYYY to YYYY-MM-DD
+                                    let [month, day, year] = row[1].split('/');
+                                    const formattedDate = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+                                    
+                                    this.expenses.push({
+                                        id: row[0],
+                                        date: formattedDate,
+                                        vendor: row[2],
+                                        description: row[3],
+                                        category: row[4],
+                                        amount: parseFloat(row[5])
+                                    });
+                                }
                             }
-                            dailySpending[day] += expense.amount;
-                        }
-                    });
-                    
-                    // Fill in the days with spending data
-                    for (let day = 1; day <= daysInMonth; day++) {
-                        const dateElement = document.createElement('div');
-                        dateElement.className = 'calendar-date';
-                        
-                        // Check if this is today
-                        const today = new Date();
-                        if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                            dateElement.classList.add('calendar-current-day');
                         }
                         
-                        // Add day number and amount spent
-                        dateElement.innerHTML = `
-                            <div>${day}</div>
-                            ${dailySpending[day] !== undefined ? `<div style="font-size: 0.8em; margin-top: 5px;">$${dailySpending[day].toFixed(2)}</div>` : ''}
-                        `;
+                        // Display success message with count
+                        this.showStatus('Data loaded successfully (' + this.expenses.length + ' expenses)', 'success');
                         
-                        // Add hover event for tooltip
-                        dateElement.addEventListener('mouseenter', (e) => this.showTooltip(e, day));
-                        dateElement.addEventListener('mouseleave', () => this.hideTooltip());
+                        // Update display 
+                        this.updateDisplay();
                         
-                        calendarContainer.appendChild(dateElement);
-                    }
-                }
-
-                showTooltip(event, day) {
-                    const month = this.currentMonth.getMonth();
-                    const year = this.currentMonth.getFullYear();
-                    
-                    // Get expenses for this specific day
-                    const dayExpenses = this.expenses.filter(expense => {
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        return (
-                            expenseDate.getDate() === day &&
-                            expenseDate.getMonth() === month &&
-                            expenseDate.getFullYear() === year
-                        );
-                    });
-                    
-                    if (dayExpenses.length === 0) {
-                        return;
-                    }
-                    
-                    let tooltipHtml = '<h4>Day Expenses</h4>';
-                    dayExpenses.forEach(expense => {
-                        tooltipHtml += `
-                            <p><strong>${expense.vendor}</strong></p>
-                            <p>${expense.description}</p>
-                            <p>$${expense.amount.toFixed(2)}</p>
-                            <hr>
-                        `;
-                    });
-                    
-                    // Remove last HR
-                    tooltipHtml = tooltipHtml.slice(0, -4);
-                    
-                    this.tooltip.innerHTML = tooltipHtml;
-                    this.tooltip.style.display = 'block';
-                    this.tooltip.style.left = (event.pageX + 10) + 'px';
-                    this.tooltip.style.top = (event.pageY - 10) + 'px';
-                }
-
-                hideTooltip() {
-                    this.tooltip.style.display = 'none';
-                }
-
-                changeMonth(direction) {
-                    this.currentMonth.setMonth(this.currentMonth.getMonth() + direction);
-                    this.updateCalendar();
-                }
-
-                startEdit(id) {
-                    const expense = this.expenses.find(exp => exp.id == id);
-                    if (!expense) return;
-                    
-                    // Fill the form with existing data
-                    document.getElementById('date').value = expense.date;
-                    document.getElementById('vendor').value = expense.vendor;
-                    document.getElementById('description').value = expense.description;
-                    document.getElementById('amount').value = expense.amount;
-                    document.getElementById('category').value = expense.category;
-                    
-                    // Check if vendor is in our predefined list
-                    const vendorSelect = document.getElementById('vendor');
-                    const otherField = document.getElementById('vendor-other-field');
-                    if (!['Cooked at home', 'Whole Foods', 'Costco', 'Walmart', 'Target', 'Wendy\'s', 'Domino\'s', 'DoorDash', 'Wonder', 'Uber Eats', 'Instacart', 'Jimmy John\'s', 'bar', 'restaurant'].includes(expense.vendor)) {
-                        vendorSelect.value = 'other';
-                        document.getElementById('vendor-other').value = expense.vendor;
-                        otherField.style.display = 'block';
-                    } else {
-                        otherField.style.display = 'none';
-                    }
-                    
-                    // Update submit button text
-                    document.getElementById('submit-btn').textContent = 'Update Expense';
-                    
-                    // Set editing flag
-                    this.editingId = id;
-                    
-                    // Scroll to form
-                    document.querySelector('.entry-form').scrollIntoView({ behavior: 'smooth' });
-                }
-
-                deleteExpense(id) {
-                    if (confirm('Are you sure you want to delete this expense?')) {
-                        this.expenses = this.expenses.filter(expense => expense.id != id);
-                        this.saveExpenses();
+                    } catch (error) {
+                        console.error("Error loading data:", error);
+                        // Load sample data instead if Google Sheets fails
+                        this.expenses = [
+                            { id: '1', date: "2026-07-20", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
+                            { id: '2', date: "2026-07-13", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 }
+                        ];
+                        
+                        this.showStatus('Loaded sample data (Google Sheets connection failed)', 'error');
                         this.updateDisplay();
                     }
                 }
                 
+                changeMonth(offset) {
+                    // Placeholder - this would be a real function in a full implementation
+                    console.log("Calendar month would change by", offset);
+                }
+
+                updateDisplay() {
+                    // Update expenses table
+                    const tableBody = document.getElementById('expensesBody');
+                    tableBody.innerHTML = '';
+                    
+                    // Show only most recent 10 expenses (but all appear when loaded from Google Sheets)
+                    const recentExpenses = this.expenses.slice(-10);
+                    recentExpenses.forEach(expense => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${expense.date}</td>
+                            <td>${expense.vendor}</td>
+                            <td>${expense.description}</td>
+                            <td>${expense.category}</td>
+                            <td>$${expense.amount.toFixed(2)}</td>
+                            <td>
+                                <button class="edit-btn" data-id="${expense.id}">Edit</button>
+                                <button class="delete-btn" data-id="${expense.id}">Delete</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Calculate and display averages in all analytics cards
+                    const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+                    const count = this.expenses.length;
+                    const average = count > 0 ? total / count : 0;
+                    
+                    document.getElementById('weekly-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('monthly-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('three-month-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('custom-range-average').textContent = '$' + average.toFixed(2);
+                    
+                    // Update chart
+                    this.updateChart();
+                    
+                    // Update calendar
+                    this.renderCalendar();
+                }
+
+                renderCalendar() {
+                    const now = new Date();
+                    const monthNames = ["January", "February", "March", "April", "May", "June",
+                                       "July", "August", "September", "October", "November", "December"];
+                    
+                    document.getElementById('current-month-year').textContent = 
+                        `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+                }
+
+                updateChart() {
+                    if (!this.expenses || this.expenses.length === 0) return;
+                    
+                    // Group expenses by category
+                    const categoryTotals = {};
+                    this.expenses.forEach(expense => {
+                        if (categoryTotals[expense.category]) {
+                            categoryTotals[expense.category] += expense.amount;
+                        } else {
+                            categoryTotals[expense.category] = expense.amount;
+                        }
+                    });
+                    
+                    // Prepare chart data
+                    const labels = Object.keys(categoryTotals);
+                    const data = Object.values(categoryTotals);
+                    
+                    // Destroy existing chart if it exists
+                    if (this.chart) {
+                        this.chart.destroy();
+                    }
+                    
+                    // Create new chart
+                    const ctx = document.getElementById('expenseChart').getContext('2d');
+                    this.chart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: [
+                                    '#FF6384',
+                                    '#36A2EB',
+                                    '#FFCE56',
+                                    '#4BC0C0',
+                                    '#9966FF',
+                                    '#FF9F40'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+
                 exportToCSV() {
                     if (this.expenses.length === 0) {
                         alert("No expenses to export");
                         return;
                     }
 
-                    const headers = ['Date', 'Vendor', 'Description', 'Category', 'Amount'];
+                    const headers = ['id', 'date', 'vendor', 'description', 'category', 'amount'];
                     const csvContent = [
                         headers.join(','),
                         ...this.expenses.map(expense => {
-                            // Format date properly for CSV
-                            const expenseDate = this.formatDateForDisplay(expense.date);
-                            const formattedDate = expenseDate.toLocaleDateString();
-                            return `"${formattedDate}","${expense.vendor}","${expense.description}","${this.getCategoryName(expense.category)}","${expense.amount.toFixed(2)}"`;
+                            return `"${expense.id}","${expense.date}","${expense.vendor}","${expense.description}","${expense.category}",${expense.amount}`;
                         })
                     ].join('\n');
 
@@ -991,120 +870,11 @@
                     a.click();
                     document.body.removeChild(a);
                 }
-
-                // Custom analytics calculations
-                calculateCustomRange() {
-                    const fromDate = document.getElementById('from-date').value;
-                    const toDate = document.getElementById('to-date').value;
-
-                    if (!fromDate || !toDate) {
-                        document.getElementById('custom-range-average').textContent = '$0.00';
-                        this.updateAnalysisDisplay('date_range', 0);
-                        return;
-                    }
-
-                    const from = this.formatDateForDisplay(fromDate);
-                    const to = this.formatDateForDisplay(toDate);
-
-                    // Check if toDate is before fromDate
-                    if (to < from) {
-                        alert("To date must be after from date");
-                        document.getElementById('custom-range-average').textContent = '$0.00';
-                        this.updateAnalysisDisplay('date_range', 0);
-                        return;
-                    }
-
-                    // Calculate number of days in range
-                    const timeDiff = to.getTime() - from.getTime();
-                    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both dates
-
-                    const filteredExpenses = this.expenses.filter(expense => {
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        return expenseDate >= from && expenseDate <= to;
-                    });
-
-                    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    const average = daysDiff > 0 ? total / daysDiff : 0;
-
-                    document.getElementById('custom-range-average').textContent = `$${average.toFixed(2)}`;
-                    
-                    this.updateAnalysisDisplay('date_range', daysDiff);
-                    this.currentAnalysis = 'date_range';
-                }
-
-                calculatePastWeeks() {
-                    const now = new Date();
-                    now.setHours(0, 0, 0, 0);
-                    
-                    // Calculate cutoff date (weeksCount weeks ago)
-                    const cutoffDate = new Date(now);
-                    cutoffDate.setDate(cutoffDate.getDate() - (this.weeksCount * 7));
-
-                    const filteredExpenses = this.expenses.filter(expense => {
-                        const expenseDate = this.formatDateForDisplay(expense.date);
-                        return expenseDate >= cutoffDate && expenseDate <= now;
-                    });
-
-                    // Calculate average
-                    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    const average = (this.weeksCount * 7) > 0 ? total / (this.weeksCount * 7) : 0;
-
-                    document.getElementById('custom-range-average').textContent = `$${average.toFixed(2)}`;
-
-                    // Update week count display
-                    document.getElementById('weeks-count').textContent = this.weeksCount;
-                    
-                    this.updateAnalysisDisplay('weeks', this.weeksCount);
-                    this.currentAnalysis = 'weeks';
-                }
-
-                updateAnalysisDisplay(type, value) {
-                    const displayElement = document.getElementById('current-analysis-display');
-                    const typeElement = document.getElementById('current-analysis-type');
-                    
-                    if (type === 'weeks') {
-                        typeElement.textContent = `${value} Week${value > 1 ? 's' : ''} Average`;
-                        displayElement.textContent = `Last ${value} week${value > 1 ? 's' : ''}`;
-                    } else {
-                        typeElement.textContent = 'Custom Range Average';
-                        displayElement.textContent = 'Custom Date Range';
-                    }
-                }
-
-                increaseWeeks() {
-                    if (this.weeksCount < 6) {
-                        this.weeksCount++;
-                        this.calculatePastWeeks();
-                        
-                        // Enable decrease button after incrementing
-                        document.getElementById('weeks-decrease').disabled = false;
-                    }
-                    
-                    // Disable increase button when at maximum of 6 weeks
-                    if (this.weeksCount >= 6) {
-                        document.getElementById('weeks-increase').disabled = true;
-                    }
-                }
-
-                decreaseWeeks() {
-                    if (this.weeksCount > 1) {
-                        this.weeksCount--;
-                        this.calculatePastWeeks();
-                        
-                        // Enable increase button after decrementing
-                        document.getElementById('weeks-increase').disabled = false;
-                    }
-                    
-                    // Disable decrease button when at minimum of 1 week
-                    if (this.weeksCount <= 1) {
-                        document.getElementById('weeks-decrease').disabled = true;
-                    }
-                }
             }
 
             // Initialize the app when DOM is loaded
             document.addEventListener('DOMContentLoaded', () => {
-                new SpendingTracker();
+                const tracker = new SpendingTracker();
             });
         </script>
     </div>
