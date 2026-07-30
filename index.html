@@ -754,7 +754,7 @@
                     const tableBody = document.getElementById('expensesBody');
                     tableBody.innerHTML = '';
                     
-                    // Show only most recent 10 expenses
+                    // Show only most recent 10 expenses (this would show all in reality)
                     const recentExpenses = this.expenses.slice(-10);
                     recentExpenses.forEach(expense => {
                         const row = document.createElement('tr');
