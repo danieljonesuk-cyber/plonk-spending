@@ -502,6 +502,20 @@
                     <h3>Spending by Category</h3>
                     <canvas id="expenseChart" width="400" height="200"></canvas>
                 </div>
+
+                <div class="calendar-container">
+                    <h3>Calendar View</h3>
+                    <div class="calendar-header">
+                        <span id="current-month-year">July 2026</span>
+                        <div class="calendar-nav">
+                            <button id="prev-month">&lt; Prev</button>
+                            <button id="next-month">Next &gt;</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid">
+                        <!-- Calendar will be generated here -->
+                    </div>
+                </div>
             </section>
 
             <section class="expenses-list">
@@ -581,6 +595,10 @@
                     // Export button
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
+                    
+                    // Calendar navigation
+                    document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
+                    document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
                 }
 
                 addExpense(event) {
@@ -630,18 +648,18 @@
                     this.showStatus('Saving to Google Sheets...', 'info');
                     
                     try {
-                        // Convert date to the format used in Google Sheets (MM/DD/YYYY)
+                        // Convert date for Google Sheets
                         const [year, month, day] = expense.date.split('-');
                         const formattedDate = `${month}/${day}/${year}`;
                         
-                        // Construct the Google Sheets API URL
+                        // Construct the API URL
                         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1:append?key=${API_KEY}`;
                         
-                        // Prepare data for sheet in correct order: id, date, vendor, description, category, amount
+                        // Prepare data for spreadsheet
                         const values = [
                             [expense.id, formattedDate, expense.vendor, expense.description, expense.category, expense.amount]
                         ];
-                        
+
                         const requestBody = {
                             values: values,
                             valueInputOption: 'RAW'
@@ -664,7 +682,7 @@
                         
                     } catch (error) {
                         console.error("Error saving expense:", error);
-                        // Even if saving fails, we should still update the UI
+                        // Even if saving fails, we update the UI
                         this.showStatus('Warning: Expense saved locally but not to Google Sheets (' + error.message + ')', 'error');
                     }
                 }
@@ -691,10 +709,13 @@
                             for (let i = 1; i < result.values.length; i++) {
                                 const row = result.values[i];
                                 if (row.length >= 6) {
-                                    // Make sure we have valid data in each position
+                                    // Convert date format: MM/DD/YYYY to YYYY-MM-DD
+                                    let [month, day, year] = row[1].split('/');
+                                    const formattedDate = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+                                    
                                     this.expenses.push({
                                         id: row[0],
-                                        date: row[1],  // Already in MM/DD/YYYY format from sheet 
+                                        date: formattedDate,
                                         vendor: row[2],
                                         description: row[3],
                                         category: row[4],
@@ -704,20 +725,28 @@
                             }
                         }
                         
+                        // Display success message with count
                         this.showStatus('Data loaded successfully (' + this.expenses.length + ' expenses)', 'success');
+                        
+                        // Update display 
                         this.updateDisplay();
                         
                     } catch (error) {
                         console.error("Error loading data:", error);
                         // Load sample data instead if Google Sheets fails
                         this.expenses = [
-                            { id: '1', date: "7/20/2026", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
-                            { id: '2', date: "7/13/2026", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 }
+                            { id: '1', date: "2026-07-20", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
+                            { id: '2', date: "2026-07-13", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 }
                         ];
                         
                         this.showStatus('Loaded sample data (Google Sheets connection failed)', 'error');
                         this.updateDisplay();
                     }
+                }
+                
+                changeMonth(offset) {
+                    // Empty implementation
+                    console.log("Calendar month changed by", offset);
                 }
 
                 updateDisplay() {
@@ -755,6 +784,18 @@
                     
                     // Update chart
                     this.updateChart();
+                    
+                    // Update calendar
+                    this.renderCalendar();
+                }
+
+                renderCalendar() {
+                    const now = new Date();
+                    const monthNames = ["January", "February", "March", "April", "May", "June",
+                                       "July", "August", "September", "October", "November", "December"];
+                    
+                    document.getElementById('current-month-year').textContent = 
+                        `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
                 }
 
                 updateChart() {
