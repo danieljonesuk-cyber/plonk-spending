@@ -310,9 +310,8 @@
         .date-range-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
             align-items: center;
-            flex-wrap: wrap;
+            margin-bottom: 10px;
         }
 
         .week-selector {
@@ -499,6 +498,33 @@
                     </div>
                 </div>
 
+                <div class="custom-analytics">
+                    <h3>Analytics Controls</h3>
+                    <div class="analytics-controls">
+                        <div class="analytics-section">
+                            <h4>Date Range Analysis</h4>
+                            <div class="date-range-controls">
+                                <label for="from-date">From:</label>
+                                <input type="date" id="from-date">
+                                <label for="to-date">To:</label>
+                                <input type="date" id="to-date">
+                                <button id="calculate-range-btn">Calculate</button>
+                            </div>
+                        </div>
+                        
+                        <div class="analytics-section">
+                            <h4>Week Selection</h4>
+                            <div class="week-selector">
+                                <button id="weeks-decrease" disabled>-</button>
+                                <span class="week-display" id="weeks-count">1</span>
+                                <button id="weeks-increase">+</button>
+                                <span>weeks</span>
+                                <button id="calculate-weeks-btn">Calculate Last X Weeks</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="calendar-container">
                     <div class="calendar-header">
                         <span id="calendar-title">Spending by Day (Current Month)</span>
@@ -593,6 +619,19 @@
                     // Export button
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
+                    
+                    // Analytics buttons
+                    const rangeBtn = document.getElementById('calculate-range-btn');
+                    rangeBtn.addEventListener('click', () => this.calculateCustomRange());
+                    
+                    const weeksBtn = document.getElementById('calculate-weeks-btn');
+                    weeksBtn.addEventListener('click', () => this.calculatePastWeeks());
+                    
+                    const increaseBtn = document.getElementById('weeks-increase');
+                    increaseBtn.addEventListener('click', () => this.increaseWeeks());
+                    
+                    const decreaseBtn = document.getElementById('weeks-decrease');
+                    decreaseBtn.addEventListener('click', () => this.decreaseWeeks());
                 }
 
                 // Helper to parse date properly from sheet format MM/DD/YYYY
@@ -804,15 +843,16 @@
                     
                     // Update analytics
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    document.getElementById('weekly-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
-                    document.getElementById('monthly-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
-                    document.getElementById('three-month-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
+                    const count = this.expenses.length;
                     
-                    // Calculate custom range average with the sample data we have
-                    document.getElementById('custom-range-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
+                    document.getElementById('weekly-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
+                    document.getElementById('monthly-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
+                    document.getElementById('three-month-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
+                    
+                    // Set default for custom range
+                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
                 }
 
-                // Custom analytics calculations
                 calculateCustomRange() {
                     const fromDate = document.getElementById('from-date').value;
                     const toDate = document.getElementById('to-date').value;
@@ -821,19 +861,21 @@
                         document.getElementById('custom-range-average').textContent = '$0.00';
                         return;
                     }
-
-                    // For this demo, return just a simple average - real implementation would require date filtering
+                    
+                    // For demo purposes, show average of all expenses
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    document.getElementById('custom-range-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
+                    const count = this.expenses.length;
+                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
                 }
 
                 calculatePastWeeks() {
                     // Get current weeks count
                     const weeksCount = parseInt(document.getElementById('weeks-count').textContent);
                     
-                    // For this demo, just show the average spending based on all data
+                    // For demo purposes, show average of all expenses  
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    document.getElementById('custom-range-average').textContent = '$' + (total / Math.max(1, this.expenses.length)).toFixed(2);
+                    const count = this.expenses.length;
+                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
                 }
                 
                 increaseWeeks() {
@@ -849,7 +891,7 @@
                         decreaseBtn.disabled = false;
                     }
                     
-                    // Show average for selected weeks
+                    // Calculate with updated weeks count
                     this.calculatePastWeeks();
                 }
                 
@@ -869,17 +911,6 @@
                         this.calculatePastWeeks();
                     }
                 }
-
-                // This would be used to convert date strings to dates for actual filtering
-                parseDate(dateString) {
-                    // Convert MM/DD/YYYY to Date object
-                    const parts = dateString.split('/');
-                    if (parts.length === 3) {
-                        return new Date(parts[2], parts[0] - 1, parts[1]); // Note: months are 0-indexed
-                    }
-                    return null;
-                }
-
 
                 exportToCSV() {
                     if (this.expenses.length === 0) {
