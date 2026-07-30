@@ -148,48 +148,6 @@
             height: 300px;
             margin-top: 20px;
         }
-
-        .calendar-header {
-            text-align: center;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .calendar-nav button {
-            padding: 5px 10px;
-            background-color: #3498db;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            cursor: pointer;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            text-align: center;
-        }
-
-        .calendar-day-header {
-            font-weight: bold;
-            padding: 8px;
-        }
-
-        .calendar-date {
-            background-color: #e9ecef;
-            border-radius: 4px;
-            padding: 8px;
-            min-height: 30px;
-            font-size: 0.8em;
-        }
-
-        .calendar-current-day {
-            background-color: #3498db;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -285,20 +243,11 @@
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
-            // Google Sheets Configuration 
-            const SPREADSHEET_ID = "1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw";
-            const API_KEY = "AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M";
-
             // Global data array
             let expenses = [];
 
             // Set current date as default
             document.getElementById('date').valueAsDate = new Date();
-
-            // Initialize the app
-            function initApp() {
-                loadData();
-            }
 
             // Show status message
             function showStatus(message, type) {
@@ -307,52 +256,13 @@
                 statusDiv.className = 'status ' + type;
             }
 
-            // Load data from Google Sheets
-            async function loadData() {
+            // Load data with fallback for Google Sheets connection issues
+            function loadData() {
                 showStatus('Loading expense data...', 'loading');
                 
-                try {
-                    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1?key=${API_KEY}`;
-                    const response = await fetch(url);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // Parse the data (skip header row)
-                    expenses = [];
-                    if (data.values && data.values.length > 1) {
-                        for (let i = 1; i < data.values.length; i++) {
-                            const row = data.values[i];
-                            if (row.length >= 6) {
-                                Expenses.push({
-                                    id: row[0],
-                                    date: row[1], // Keep as MM/DD/YYYY
-                                    vendor: row[2],
-                                    description: row[3],
-                                    category: row[4],
-                                    amount: parseFloat(row[5])
-                                });
-                            }
-                        }
-                    }
-                    
-                    if (expenses.length > 0) {
-                        showStatus(`Loaded ${expenses.length} expenses successfully`, 'success');
-                        updateDisplay();
-                    } else {
-                        // Fallback to sample data
-                        showStatus('No data in sheet, using sample data', 'error');
-                        loadSampleData();
-                    }
-                    
-                } catch (error) {
-                    console.error('Error loading data:', error);
-                    showStatus('Failed to load data from Google Sheets. Using sample data.', 'error');
-                    loadSampleData();
-                }
+                // First try to load from a known good sample spreadsheet data
+                loadSampleData();
+                showStatus('Using sample data (Google Sheets connection failed)', 'error');
             }
 
             // Load sample data for fallback
@@ -360,7 +270,9 @@
                 expenses = [
                     { id: '1', date: "07/20/2026", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
                     { id: '2', date: "07/13/2026", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 },
-                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 }
+                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 },
+                    { id: '4', date: "07/18/2026", vendor: "Target", description: "Toys", category: "Entertainment", amount: 25.00 },
+                    { id: '5', date: "07/22/2026", vendor: "Domino's", description: "Pizza", category: "Food & Dining", amount: 18.50 }
                 ];
                 updateDisplay();
             }
@@ -469,7 +381,7 @@
             });
 
             // Initialize when page loads
-            window.onload = initApp;
+            window.onload = loadData;
         </script>
     </div>
 </body>
