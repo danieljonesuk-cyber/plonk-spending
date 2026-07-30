@@ -498,33 +498,6 @@
                     </div>
                 </div>
 
-                <div class="custom-analytics">
-                    <h3>Analytics Controls</h3>
-                    <div class="analytics-controls">
-                        <div class="analytics-section">
-                            <h4>Date Range Analysis</h4>
-                            <div class="date-range-controls">
-                                <label for="from-date">From:</label>
-                                <input type="date" id="from-date">
-                                <label for="to-date">To:</label>
-                                <input type="date" id="to-date">
-                                <button id="calculate-range-btn">Calculate</button>
-                            </div>
-                        </div>
-                        
-                        <div class="analytics-section">
-                            <h4>Week Selection</h4>
-                            <div class="week-selector">
-                                <button id="weeks-decrease" disabled>-</button>
-                                <span class="week-display" id="weeks-count">1</span>
-                                <button id="weeks-increase">+</button>
-                                <span>weeks</span>
-                                <button id="calculate-weeks-btn">Calculate Last X Weeks</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="calendar-container">
                     <div class="calendar-header">
                         <span id="calendar-title">Spending by Day (Current Month)</span>
@@ -540,7 +513,7 @@
 
                 <div class="chart-container">
                     <h3>Spending by Category</h3>
-                    <p id="category-chart">Chart would appear here</p>
+                    <canvas id="expenseChart" width="400" height="200"></canvas>
                 </div>
             </section>
 
@@ -569,18 +542,20 @@
 
         <div id="tooltip" class="tooltip"></div>
 
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
             // Google Sheets Configuration 
             const SPREADSHEET_ID = "1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw";
-            const API_KEY = "AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M";
+            const API_KEY = "AIzaSyCYYyEoyObpQLYcj4y7FEnYa8fItiwc9M";
 
-            // Plonk Spending Tracker - Google Sheets Integration Version
+            // Plonk Spending Tracker - Google Sheets Version
             class SpendingTracker {
                 constructor() {
                     this.expenses = [];
                     this.editingId = null;
                     this.currentMonth = new Date();
                     this.tooltip = document.getElementById('tooltip');
+                    this.chart = null;
                     
                     this.bindEvents();
                     
@@ -589,8 +564,8 @@
                     const formattedDate = today.toISOString().split('T')[0];
                     document.getElementById('date').value = formattedDate;
                     
-                    // Load expenses from Google Sheets
-                    this.loadExpensesFromSheets();
+                    // Load expenses from Google Sheets or local storage
+                    this.loadData();
                 }
 
                 showStatus(message, type = 'info') {
@@ -602,6 +577,7 @@
                 }
 
                 bindEvents() {
+                    // Expense form submission
                     const form = document.getElementById('expenseForm');
                     form.addEventListener('submit', (e) => this.addExpense(e));
                     
@@ -620,63 +596,16 @@
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
                     
-                    // Analytics buttons
-                    const rangeBtn = document.getElementById('calculate-range-btn');
-                    rangeBtn.addEventListener('click', () => this.calculateCustomRange());
-                    
-                    const weeksBtn = document.getElementById('calculate-weeks-btn');
-                    weeksBtn.addEventListener('click', () => this.calculatePastWeeks());
-                    
-                    const increaseBtn = document.getElementById('weeks-increase');
-                    increaseBtn.addEventListener('click', () => this.increaseWeeks());
-                    
-                    const decreaseBtn = document.getElementById('weeks-decrease');
-                    decreaseBtn.addEventListener('click', () => this.decreaseWeeks());
-                }
-
-                // Helper to parse date properly from sheet format MM/DD/YYYY
-                parseDateFromSheet(dateString) {
-                    if (!dateString || dateString === "") return null;
-                    
-                    // Handle Google Sheets date format (MM/DD/YYYY)
-                    const parts = dateString.split('/');
-                    if (parts.length === 3) {
-                        const month = parseInt(parts[0], 10);
-                        const day = parseInt(parts[1], 10);
-                        const year = parseInt(parts[2], 10);
-                        
-                        // Handle 2-digit year conversion
-                        const fullYear = year < 100 ? (year > 50 ? 1900 + year : 2000 + year) : year;
-                        
-                        return new Date(fullYear, month - 1, day);
-                    }
-                    
-                    // Fallback to standard parsing
-                    return new Date(dateString);
-                }
-
-                // Helper to handle date formatting for JavaScript dates
-                formatDateForDisplay(dateObj) {
-                    if (!dateObj || !(dateObj instanceof Date)) return "";
-                    return dateObj.toLocaleDateString();
-                }
-
-                // Helper to handle date formatting for the sheet
-                formatDateForSheet(dateObj) {
-                    if (!dateObj || !(dateObj instanceof Date)) return "";
-                    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                    const day = dateObj.getDate().toString().padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    return `${month}/${day}/${year}`;
+                    // Calendar navigation
+                    document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
+                    document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
                 }
 
                 addExpense(event) {
                     event.preventDefault();
                     
-                    const vendorSelect = document.getElementById('vendor');
-                    let vendorName = vendorSelect.value;
-                    
-                    // Handle "other" vendor case
+                    // Get vendor name (handle "other" case)
+                    let vendorName = document.getElementById('vendor').value;
                     if (vendorName === 'other') {
                         const otherInput = document.getElementById('vendor-other');
                         if (!otherInput.value.trim()) {
@@ -686,13 +615,10 @@
                         vendorName = otherInput.value.trim();
                     }
 
-                    // Get date and prepare expense data
-                    const dateString = document.getElementById('date').value;
-                    
-                    // Create expense object 
+                    // Get form values
                     const expense = {
-                        id: Date.now().toString(), // Use timestamp as ID
-                        date: dateString,
+                        id: Date.now().toString(),
+                        date: document.getElementById('date').value,
                         vendor: vendorName,
                         description: document.getElementById('description').value,
                         amount: parseFloat(document.getElementById('amount').value),
@@ -700,17 +626,8 @@
                     };
 
                     // Add to local array first (for immediate display)
-                    if (this.editingId !== null) {
-                        const index = this.expenses.findIndex(exp => exp.id == this.editingId);
-                        if (index !== -1) {
-                            this.expenses[index] = expense;
-                        }
-                        this.editingId = null;
-                        document.getElementById('submit-btn').textContent = 'Add Expense';
-                    } else {
-                        this.expenses.push(expense);
-                    }
-
+                    this.expenses.push(expense);
+                    
                     // Save to Google Sheets
                     this.saveExpenseToSheets(expense);
                     
@@ -731,16 +648,21 @@
                     this.showStatus('Saving to Google Sheets...', 'info');
                     
                     try {
+                        // Convert date to the format used in Google Sheets (MM/DD/YYYY)
+                        const [year, month, day] = expense.date.split('-');
+                        const formattedDate = `${month}/${day}/${year}`;
+                        
                         // Construct the Google Sheets API URL
                         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1:append?key=${API_KEY}`;
                         
-                        // Prepare the data for Sheet in correct order: id,date,vendor,description,category,amount
+                        // Prepare data for sheet in correct order: id, date, vendor, description, category, amount
                         const values = [
-                            [expense.id, expense.date, expense.vendor, expense.description, expense.category, expense.amount]
+                            [expense.id, formattedDate, expense.vendor, expense.description, expense.category, expense.amount]
                         ];
                         
                         const requestBody = {
-                            values: values
+                            values: values,
+                            valueInputOption: 'RAW'
                         };
                         
                         const response = await fetch(url, {
@@ -760,16 +682,16 @@
                         
                     } catch (error) {
                         console.error("Error saving expense:", error);
-                        // Even if we can't save to sheet, let the user continue
+                        // Even if saving fails, we should still update the UI
                         this.showStatus('Warning: Expense saved locally but not to Google Sheets (' + error.message + ')', 'error');
                     }
                 }
 
-                async loadExpensesFromSheets() {
+                async loadData() {
                     this.showStatus('Loading data from Google Sheets...', 'info');
                     
                     try {
-                        // Construct the Google Sheets API URL
+                        // Construct the API URL
                         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1?key=${API_KEY}`;
                         
                         const response = await fetch(url);
@@ -780,20 +702,17 @@
                         const result = await response.json();
                         
                         // Clear existing expenses
-                        this.expenses.length = 0;
+                        this.expenses = [];
                         
-                        // Parse data from the sheet
+                        // Parse data from the sheet (skip header row)
                         if (result.values && result.values.length > 1) {
-                            // Skip header row and parse expenses
                             for (let i = 1; i < result.values.length; i++) {
                                 const row = result.values[i];
-                                // Make sure we have sufficient columns
                                 if (row.length >= 6) {
-                                    const dateObj = this.parseDateFromSheet(row[1]);
-                                    
+                                    // Make sure we have valid data in each position
                                     this.expenses.push({
-                                        id: row[0], // ID from column 1
-                                        date: dateObj ? this.formatDateForSheet(dateObj) : "", // Store as MM/DD/YYYY for form
+                                        id: row[0],
+                                        date: row[1],  // Already in MM/DD/YYYY format from sheet 
                                         vendor: row[2],
                                         description: row[3],
                                         category: row[4],
@@ -803,29 +722,30 @@
                             }
                         }
                         
+                        this.showStatus('Data loaded successfully', 'success');
                         this.updateDisplay();
-                        this.showStatus('Data loaded from Google Sheets successfully', 'success');
                         
                     } catch (error) {
-                        console.error("Error loading expenses:", error);
-                        // Fallback to sample data if sheet fails
+                        console.error("Error loading data:", error);
+                        // Load sample data instead if Google Sheets fails
                         this.expenses = [
-                            { id: '1', date: "7/20/2026", vendor: "Wendy's", description: "Nuggs deal", category: "Food & Dining", amount: 4.00 },
+                            { id: '1', date: "7/20/2026", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
                             { id: '2', date: "7/13/2026", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 }
                         ];
                         
+                        this.showStatus('Loaded sample data (Google Sheets connection failed)', 'error');
                         this.updateDisplay();
-                        this.showStatus('Loaded sample data (Sheet failed to load). Data may be saved locally but not in Google Sheets.', 'error');
                     }
                 }
 
                 updateDisplay() {
-                    // Clear table
+                    // Update expenses table
                     const tableBody = document.getElementById('expensesBody');
                     tableBody.innerHTML = '';
                     
-                    // Add each expense to table
-                    this.expenses.forEach(expense => {
+                    // Show only most recent 10 expenses
+                    const recentExpenses = this.expenses.slice(-10);
+                    recentExpenses.forEach(expense => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${expense.date}</td>
@@ -841,78 +761,108 @@
                         tableBody.appendChild(row);
                     });
                     
-                    // Update analytics
+                    // Update analytics displays (all with same value since we lack proper date handling)
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
                     const count = this.expenses.length;
+                    const average = count > 0 ? total / count : 0;
                     
-                    // Calculate averages (same value for all since we have limited data)
-                    const average = count > 0 ? (total / count).toFixed(2) : '0.00';
+                    document.getElementById('weekly-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('monthly-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('three-month-average').textContent = '$' + average.toFixed(2);
+                    document.getElementById('custom-range-average').textContent = '$' + average.toFixed(2);
                     
-                    document.getElementById('weekly-average').textContent = '$' + average;
-                    document.getElementById('monthly-average').textContent = '$' + average;
-                    document.getElementById('three-month-average').textContent = '$' + average;
+                    // Update chart
+                    this.updateChart();
                     
-                    // Default custom range average
-                    document.getElementById('custom-range-average').textContent = '$' + average;
+                    // Update calendar 
+                    this.updateCalendar();
                 }
 
-                calculateCustomRange() {
-                    const fromDate = document.getElementById('from-date').value;
-                    const toDate = document.getElementById('to-date').value;
-
-                    if (!fromDate || !toDate) {
-                        document.getElementById('custom-range-average').textContent = '$0.00';
-                        return;
-                    }
+                updateChart() {
+                    if (!this.expenses || this.expenses.length === 0) return;
                     
-                    // For demo purposes, show average of all expenses
-                    const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    const count = this.expenses.length;
-                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
-                }
-
-                calculatePastWeeks() {
-                    // Get current weeks count
-                    const weeksCount = parseInt(document.getElementById('weeks-count').textContent);
-                    
-                    // For demo purposes, show average of all expenses  
-                    const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                    const count = this.expenses.length;
-                    document.getElementById('custom-range-average').textContent = '$' + (count > 0 ? (total / count).toFixed(2) : '0.00');
-                }
-                
-                increaseWeeks() {
-                    const weeksElement = document.getElementById('weeks-count');
-                    let currentWeeks = parseInt(weeksElement.textContent);
-                    currentWeeks++;
-                    if (currentWeeks > 10) currentWeeks = 10; // Limit to 10 weeks
-                    weeksElement.textContent = currentWeeks;
-                    
-                    // Enable/disable buttons based on value
-                    const decreaseBtn = document.getElementById('weeks-decrease');
-                    if (currentWeeks > 1) {
-                        decreaseBtn.disabled = false;
-                    }
-                    
-                    // Calculate with updated weeks count
-                    this.calculatePastWeeks();
-                }
-                
-                decreaseWeeks() {
-                    const weeksElement = document.getElementById('weeks-count');
-                    let currentWeeks = parseInt(weeksElement.textContent);
-                    if (currentWeeks > 1) {
-                        currentWeeks--;
-                        weeksElement.textContent = currentWeeks;
-                        
-                        // Disable decrease button when at 1 week
-                        const decreaseBtn = document.getElementById('weeks-decrease');
-                        if (currentWeeks <= 1) {
-                            decreaseBtn.disabled = true;
+                    // Group expenses by category
+                    const categoryTotals = {};
+                    this.expenses.forEach(expense => {
+                        if (categoryTotals[expense.category]) {
+                            categoryTotals[expense.category] += expense.amount;
+                        } else {
+                            categoryTotals[expense.category] = expense.amount;
                         }
-                        
-                        this.calculatePastWeeks();
+                    });
+                    
+                    // Prepare chart data
+                    const labels = Object.keys(categoryTotals);
+                    const data = Object.values(categoryTotals);
+                    
+                    // Destroy existing chart if it exists
+                    if (this.chart) {
+                        this.chart.destroy();
                     }
+                    
+                    // Create new chart (only if we have data)
+                    if (labels.length > 0) {
+                        const ctx = document.getElementById('expenseChart').getContext('2d');
+                        this.chart = new Chart(ctx, {
+                            type: 'pie',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: data,
+                                    backgroundColor: [
+                                        '#FF6384',
+                                        '#36A2EB',
+                                        '#FFCE56',
+                                        '#4BC0C0',
+                                        '#9966FF',
+                                        '#FF9F40'
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        });
+                    }
+                }
+
+                updateCalendar() {
+                    // Basic calendar functionality that doesn't depend on Google Sheets data handling
+                    const calendar = document.getElementById('spending-calendar');
+                    calendar.innerHTML = '';
+                    
+                    // Create day headers 
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    days.forEach(day => {
+                        const header = document.createElement('div');
+                        header.className = 'calendar-day-header';
+                        header.textContent = day;
+                        calendar.appendChild(header);
+                    });
+                    
+                    // Add empty slots for the start of the month
+                    const firstDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
+                    const firstDayOfWeek = firstDay.getDay();
+                    for (let i = 0; i < firstDayOfWeek; i++) {
+                        const empty = document.createElement('div');
+                        empty.className = 'calendar-empty';
+                        calendar.appendChild(empty);
+                    }
+                    
+                    // Add days
+                    const daysInMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0).getDate();
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const dayElement = document.createElement('div');
+                        dayElement.className = 'calendar-date';
+                        dayElement.textContent = day;
+                        calendar.appendChild(dayElement);
+                    }
+                }
+
+                changeMonth(direction) {
+                    this.currentMonth.setMonth(this.currentMonth.getMonth() + direction);
+                    this.updateCalendar();
                 }
 
                 exportToCSV() {
@@ -925,7 +875,7 @@
                     const csvContent = [
                         headers.join(','),
                         ...this.expenses.map(expense => {
-                            return `"${expense.id}","${expense.date}","${expense.vendor}","${expense.description}","${expense.category}","${expense.amount.toFixed(2)}"`;
+                            return `"${expense.id}","${expense.date}","${expense.vendor}","${expense.description}","${expense.category}",${expense.amount}`;
                         })
                     ].join('\n');
 
