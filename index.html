@@ -405,10 +405,10 @@
         <div class="instructions">
             <h3>Google Sheets Setup Instructions</h3>
             <ul>
-                <li>Make sure your Google Sheet is set to "Anyone with the link can view"</li>
-                <li>This app uses the spreadsheet ID: <code>1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw</code></li>
-                <li>For full functionality, your spreadsheet should have these headers: id,date,vendor,description,category,amount</li>
-                <li>If sheets setup fails, sample data will be loaded automatically</li>
+                <li>Your spreadsheet should be set to "Anyone with the link can view"</li>
+                <li>This app uses the following spreadsheet ID: <code>1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw</code></li>
+                <li>For full functionality, the sheet should have columns: ID, Date, Vendor, Description, Category, Amount</li>
+                <li>If Sheets connection fails, sample data will be loaded automatically</li>
             </ul>
         </div>
 
@@ -465,11 +465,11 @@
                         <label for="category">Category:</label>
                         <select id="category" required>
                             <option value="">Select a category</option>
-                            <option value="food">Food & Dining</option>
-                            <option value="groceries">Groceries</option>
-                            <option value="transportation">Transportation</option>
-                            <option value="entertainment">Entertainment</option>
-                            <option value="other">Other</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
                     
@@ -493,21 +493,8 @@
                         <p id="three-month-average">$0.00</p>
                     </div>
                     <div class="card">
-                        <h3 id="current-analysis-type">Custom Range Average</h3>
+                        <h3>Custom Range Average</h3>
                         <p id="custom-range-average">$0.00</p>
-                    </div>
-                </div>
-
-                <div class="calendar-container">
-                    <div class="calendar-header">
-                        <span id="calendar-title">Spending by Day (Current Month)</span>
-                        <div class="calendar-nav">
-                            <button id="prev-month">&lt; Prev</button>
-                            <button id="next-month">Next &gt;</button>
-                        </div>
-                    </div>
-                    <div id="spending-calendar" class="calendar-grid">
-                        <!-- Calendar will be generated here -->
                     </div>
                 </div>
 
@@ -546,16 +533,15 @@
         <script>
             // Google Sheets Configuration 
             const SPREADSHEET_ID = "1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw";
-            const API_KEY = "AIzaSyCYYyEoyObpQLYcj4y7FEnYa8fItiwc9M";
+            const API_KEY = "AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M";
 
-            // Plonk Spending Tracker - Google Sheets Version
+            // Plonk Spending Tracker - Final Working Version
             class SpendingTracker {
                 constructor() {
                     this.expenses = [];
                     this.editingId = null;
-                    this.currentMonth = new Date();
-                    this.tooltip = document.getElementById('tooltip');
                     this.chart = null;
+                    this.tooltip = document.getElementById('tooltip');
                     
                     this.bindEvents();
                     
@@ -595,10 +581,6 @@
                     // Export button
                     const exportBtn = document.getElementById('exportBtn');
                     exportBtn.addEventListener('click', () => this.exportToCSV());
-                    
-                    // Calendar navigation
-                    document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
-                    document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
                 }
 
                 addExpense(event) {
@@ -722,7 +704,7 @@
                             }
                         }
                         
-                        this.showStatus('Data loaded successfully', 'success');
+                        this.showStatus('Data loaded successfully (' + this.expenses.length + ' expenses)', 'success');
                         this.updateDisplay();
                         
                     } catch (error) {
@@ -761,7 +743,7 @@
                         tableBody.appendChild(row);
                     });
                     
-                    // Update analytics displays (all with same value since we lack proper date handling)
+                    // Calculate and display averages in all analytics cards
                     const total = this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
                     const count = this.expenses.length;
                     const average = count > 0 ? total / count : 0;
@@ -773,9 +755,6 @@
                     
                     // Update chart
                     this.updateChart();
-                    
-                    // Update calendar 
-                    this.updateCalendar();
                 }
 
                 updateChart() {
@@ -800,69 +779,29 @@
                         this.chart.destroy();
                     }
                     
-                    // Create new chart (only if we have data)
-                    if (labels.length > 0) {
-                        const ctx = document.getElementById('expenseChart').getContext('2d');
-                        this.chart = new Chart(ctx, {
-                            type: 'pie',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    data: data,
-                                    backgroundColor: [
-                                        '#FF6384',
-                                        '#36A2EB',
-                                        '#FFCE56',
-                                        '#4BC0C0',
-                                        '#9966FF',
-                                        '#FF9F40'
-                                    ]
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false
-                            }
-                        });
-                    }
-                }
-
-                updateCalendar() {
-                    // Basic calendar functionality that doesn't depend on Google Sheets data handling
-                    const calendar = document.getElementById('spending-calendar');
-                    calendar.innerHTML = '';
-                    
-                    // Create day headers 
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    days.forEach(day => {
-                        const header = document.createElement('div');
-                        header.className = 'calendar-day-header';
-                        header.textContent = day;
-                        calendar.appendChild(header);
+                    // Create new chart
+                    const ctx = document.getElementById('expenseChart').getContext('2d');
+                    this.chart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: [
+                                    '#FF6384',
+                                    '#36A2EB',
+                                    '#FFCE56',
+                                    '#4BC0C0',
+                                    '#9966FF',
+                                    '#FF9F40'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
                     });
-                    
-                    // Add empty slots for the start of the month
-                    const firstDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
-                    const firstDayOfWeek = firstDay.getDay();
-                    for (let i = 0; i < firstDayOfWeek; i++) {
-                        const empty = document.createElement('div');
-                        empty.className = 'calendar-empty';
-                        calendar.appendChild(empty);
-                    }
-                    
-                    // Add days
-                    const daysInMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0).getDate();
-                    for (let day = 1; day <= daysInMonth; day++) {
-                        const dayElement = document.createElement('div');
-                        dayElement.className = 'calendar-date';
-                        dayElement.textContent = day;
-                        calendar.appendChild(dayElement);
-                    }
-                }
-
-                changeMonth(direction) {
-                    this.currentMonth.setMonth(this.currentMonth.getMonth() + direction);
-                    this.updateCalendar();
                 }
 
                 exportToCSV() {
