@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plonk Spending Tracker</title>
     <style>
+        /* Reset and base styles */
         * {
             margin: 0;
             padding: 0;
@@ -34,44 +35,29 @@
         }
 
         h1 {
-            font-size: 2rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
         }
 
-        .status {
-            text-align: center;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
+        main {
+            display: grid;
+            gap: 30px;
         }
 
-        .status.loading {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-        }
-
-        .status.success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-
-        .form-section, .analytics-section, .expenses-section {
+        .entry-form {
             background-color: white;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 25px;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        h2 {
+        .entry-form h2 {
+            margin-bottom: 20px;
             color: #2c3e50;
-            margin-bottom: 15px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         label {
@@ -82,31 +68,49 @@
 
         input, select {
             width: 100%;
-            padding: 8px;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            font-size: 16px;
         }
 
         button {
             background-color: #3498db;
             color: white;
-            padding: 10px 15px;
+            padding: 12px 20px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 16px;
             width: 100%;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .analytics {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .analytics h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
         }
 
         .summary-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
 
         .card {
             background-color: #ecf0f1;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             text-align: center;
         }
@@ -117,9 +121,31 @@
         }
 
         .card p {
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: #3498db;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .expenses-list {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .expenses-list h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .actions {
+            margin-bottom: 20px;
+            text-align: right;
         }
 
         table {
@@ -129,7 +155,7 @@
         }
 
         th, td {
-            padding: 10px;
+            padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
@@ -139,24 +165,215 @@
             font-weight: bold;
         }
 
-        .chart-container {
-            height: 300px;
-            margin-top: 20px;
+        tr:hover {
+            background-color: #f9f9f9;
         }
+
+        .calendar-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+        }
+
+        .calendar-day-header {
+            font-weight: bold;
+            padding: 8px;
+        }
+
+        .calendar-date {
+            background-color: #e9ecef;
+            border-radius: 4px;
+            padding: 10px 5px;
+            min-height: 40px;
+            font-size: 0.9em;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .calendar-empty {
+            opacity: 0.5;
+        }
+
+        .calendar-current-day {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .edit-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 5px 10px;
+            font-size: 0.8em;
+            margin: 0 2px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: absolute;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 1000;
+            max-width: 200px;
+            display: none;
+        }
+
+        .tooltip h4 {
+            margin-bottom: 5px;
+            color: #ffcc00;
+        }
+
+        .tooltip p {
+            margin: 3px 0;
+            font-size: 0.8em;
+        }
+
+        /* Custom date range section */
+        .date-range-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .date-range-controls h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .range-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .range-btn {
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .range-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .date-inputs {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            align-items: center;
+        }
+
+        .date-inputs input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 0.9em;
+            }
+            
+            .range-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .status-loading {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Plonk Spending Tracker</h1>
-            <p>Track your spending with data from Google Sheets</p>
+            <p>Track your spending with Google Sheets integration</p>
         </header>
 
-        <div id="status" class="status loading">
-            Loading data...
+        <div id="status-message" class="status-message status-loading">
+            Loading expense data...
         </div>
 
-        <section class="form-section">
+        <section class="entry-form">
             <h2>Add New Expense</h2>
             <form id="expenseForm">
                 <div class="form-group">
@@ -193,8 +410,29 @@
             </form>
         </section>
 
-        <section class="analytics-section">
+        <section class="analytics">
             <h2>Spending Analytics</h2>
+            
+            <div class="date-range-controls">
+                <h3>Custom Date Range</h3>
+                <div class="range-buttons">
+                    <button class="range-btn" data-weeks="1">1 Week Average</button>
+                    <button class="range-btn" data-weeks="2">2 Weeks Average</button>
+                    <button class="range-btn" data-weeks="3">3 Weeks Average</button>
+                    <button class="range-btn" data-weeks="4">4 Weeks Average</button>
+                    <button class="range-btn" data-weeks="5">5 Weeks Average</button>
+                    <button class="range-btn" data-weeks="6">6 Weeks Average</button>
+                </div>
+                
+                <div class="date-inputs">
+                    <label for="start-date">Start Date:</label>
+                    <input type="date" id="start-date">
+                    <label for="end-date">End Date:</label>
+                    <input type="date" id="end-date">
+                    <button id="apply-date-range">Apply Date Range</button>
+                </div>
+            </div>
+
             <div class="summary-cards">
                 <div class="card">
                     <h3>Weekly Average</h3>
@@ -219,8 +457,11 @@
             </div>
         </section>
 
-        <section class="expenses-section">
+        <section class="expenses-list">
             <h2>All Expenses</h2>
+            <div class="actions">
+                <button id="export-btn">Export Data</button>
+            </div>
             <table id="expensesTable">
                 <thead>
                     <tr>
@@ -228,6 +469,7 @@
                         <th>Vendor</th>
                         <th>Description</th>
                         <th>Amount</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="expensesBody">
@@ -236,19 +478,26 @@
             </table>
         </section>
 
+        <div class="calendar-container">
+            <h2>Calendar View</h2>
+            <div id="calendar-view"></div>
+        </div>
+
+        <div class="tooltip" id="expense-tooltip"></div>
+
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
             // Global data array
             let expenses = [];
-
+            
             // Set current date as default
             document.getElementById('date').valueAsDate = new Date();
 
             // Show status message
             function showStatus(message, type) {
-                const statusDiv = document.getElementById('status');
+                const statusDiv = document.getElementById('status-message');
                 statusDiv.textContent = message;
-                statusDiv.className = 'status ' + type;
+                statusDiv.className = 'status-message status-' + type;
             }
 
             // Load data from Google Sheets with proper error handling  
@@ -276,7 +525,7 @@
                                     vendor: row[2],
                                     description: row[3],
                                     category: row[4],
-                                    amount: Number(row[5]) // Critical fix: convert to number 
+                                    amount: Number(row[5]) // Convert to number
                                 });
                             }
                         }
@@ -303,13 +552,17 @@
                 expenses = [
                     { id: '1', date: "07/20/2026", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
                     { id: '2', date: "07/13/2026", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 },
-                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 }
+                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 },
+                    { id: '4', date: "07/18/2026", vendor: "Target", description: "Toys", category: "Entertainment", amount: 25.00 },
+                    { id: '5', date: "07/22/2026", vendor: "Domino's", description: "Pizza", category: "Food & Dining", amount: 18.50 },
+                    { id: '6', date: "07/25/2026", vendor: "DoorDash", description: "Lunch", category: "Food & Dining", amount: 15.00 },
+                    { id: '7', date: "07/28/2026", vendor: "Uber Eats", description: "Dinner", category: "Food & Dining", amount: 22.00 }
                 ];
             }
 
             // Update display with expense data
             function updateDisplay() {
-                // Update table with all expenses (not just 10)
+                // Update table with all expenses
                 const tableBody = document.getElementById('expensesBody');
                 tableBody.innerHTML = '';
                 
@@ -320,11 +573,28 @@
                         <td>${expense.vendor}</td>
                         <td>${expense.description}</td>
                         <td>$${expense.amount.toFixed(2)}</td>
+                        <td>
+                            <div class="edit-buttons">
+                                <button class="edit-btn" onclick="editExpense('${expense.id}')">Edit</button>
+                                <button class="delete-btn" onclick="deleteExpense('${expense.id}')">Delete</button>
+                            </div>
+                        </td>
                     `;
                     tableBody.appendChild(row);
                 });
 
-                // Update analytics with correct calculation
+                // Update analytics
+                calculateAnalytics();
+                
+                // Update chart
+                updateChart();
+                
+                // Update calendar view
+                updateCalendar();
+            }
+
+            // Calculate analytics including custom date range
+            function calculateAnalytics() {
                 if (expenses.length > 0) {
                     const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
                     const average = total / expenses.length;
@@ -339,9 +609,6 @@
                     document.getElementById('three-month-average').textContent = '$0.00';
                     document.getElementById('custom-range-average').textContent = '$0.00';
                 }
-                
-                // Update chart
-                updateChart();
             }
 
             // Update the chart with expense data
@@ -390,6 +657,56 @@
                 });
             }
 
+            // Update calendar view
+            function updateCalendar() {
+                const calendarDiv = document.getElementById('calendar-view');
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = today.getMonth();
+                
+                // Create calendar header
+                let calendarHTML = `<h3>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h3>`;
+                
+                // Weekday headers
+                calendarHTML += '<div class="calendar-grid">';
+                const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                weekdays.forEach(day => {
+                    calendarHTML += `<div class="calendar-day-header">${day}</div>`;
+                });
+                
+                // Get the first day of the month
+                const firstDay = new Date(year, month, 1).getDay();
+                
+                // Add empty cells for days before the first day
+                for (let i = 0; i < firstDay; i++) {
+                    calendarHTML += '<div class="calendar-date calendar-empty"></div>';
+                }
+                
+                // Add days of the month
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${month+1}/${day}/${year}`;
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'calendar-date';
+                    dayElement.textContent = day;
+                    
+                    // Check if there's an expense for this day
+                    const hasExpense = expenses.some(expense => {
+                        return expense.date === dateStr; // You may need to adjust date format
+                    });
+                    
+                    if (hasExpense) {
+                        dayElement.style.backgroundColor = '#3498db';
+                        dayElement.style.color = 'white';
+                    }
+                    
+                    calendarHTML += dayElement;
+                }
+                
+                calendarHTML += '</div>';
+                calendarDiv.innerHTML = calendarHTML;
+            }
+
             // Handle form submission
             document.getElementById('expenseForm').addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -408,6 +725,78 @@
                 // Reset form
                 this.reset();
                 document.getElementById('date').valueAsDate = new Date();
+            });
+
+            // Edit expense function (needs to be in global scope for onclick)
+            function editExpense(id) {
+                const expense = expenses.find(e => e.id === id);
+                if (expense) {
+                    alert('Edit functionality would go here'); // Placeholder
+                }
+            }
+
+            // Delete expense function
+            function deleteExpense(id) {
+                if (confirm('Are you sure you want to delete this expense?')) {
+                    expenses = expenses.filter(expense => expense.id !== id);
+                    updateDisplay();
+                }
+            }
+
+            // Date range functionality
+            document.querySelectorAll('.range-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const weeks = parseInt(this.dataset.weeks);
+                    calculateCustomRange(weeks);
+                });
+            });
+
+            document.getElementById('apply-date-range').addEventListener('click', function() {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                if (startDate && endDate) {
+                    calculateDateRange(startDate, endDate);
+                }
+            });
+
+            // Calculate custom range based on weeks
+            function calculateCustomRange(weeks) {
+                const now = new Date();
+                const startDate = new Date(now);
+                startDate.setDate(now.getDate() - (weeks * 7));
+                
+                const filteredExpenses = expenses.filter(expense => {
+                    const expenseDate = new Date(expense.date);
+                    return expenseDate >= startDate && expenseDate <= now;
+                });
+                
+                if (filteredExpenses.length > 0) {
+                    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+                    const average = total / filteredExpenses.length;
+                    document.getElementById('custom-range-average').textContent = '$' + average.toFixed(2);
+                }
+            }
+
+            // Calculate range based on date inputs
+            function calculateDateRange(startDate, endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                
+                const filteredExpenses = expenses.filter(expense => {
+                    const expenseDate = new Date(expense.date);
+                    return expenseDate >= start && expenseDate <= end;
+                });
+                
+                if (filteredExpenses.length > 0) {
+                    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+                    const average = total / filteredExpenses.length;
+                    document.getElementById('custom-range-average').textContent = '$' + average.toFixed(2);
+                }
+            }
+
+            // Export data functionality
+            document.getElementById('export-btn').addEventListener('click', function() {
+                alert('Data export functionality would go here'); // Placeholder
             });
 
             // Initialize when page loads
