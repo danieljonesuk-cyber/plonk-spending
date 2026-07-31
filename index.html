@@ -5,18 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plonk Spending Tracker</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
             background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
         }
 
         header {
@@ -50,12 +55,6 @@
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
-        }
-
-        .status.error {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
         }
 
         .form-section, .analytics-section, .expenses-section {
@@ -96,10 +95,6 @@
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
-        }
-
-        button:hover {
-            background-color: #2980b9;
         }
 
         .summary-cards {
@@ -154,11 +149,11 @@
     <div class="container">
         <header>
             <h1>Plonk Spending Tracker</h1>
-            <p>Track your spending with Google Sheets integration</p>
+            <p>Track your spending with data from Google Sheets</p>
         </header>
 
         <div id="status" class="status loading">
-            Connecting to data source...
+            Loading data...
         </div>
 
         <section class="form-section">
@@ -256,13 +251,51 @@
                 statusDiv.className = 'status ' + type;
             }
 
-            // Load data with fallback for Google Sheets connection issues
-            function loadData() {
+            // Load data from Google Sheets with proper error handling  
+            async function loadData() {
                 showStatus('Loading expense data...', 'loading');
                 
-                // First try to load from a known good sample spreadsheet data
-                loadSampleData();
-                showStatus('Using sample data (Google Sheets connection failed)', 'error');
+                try {
+                    const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets/1ToIcSZ16p-eNcqLNNO8_IwIzHl-7xk1G4OWGsvjKxtw/values/Sheet1?key=AIzaSyCYYyEoyObpQlLYcj4y7FEnYa8fItiwc9M');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Parse the data (skip header row)
+                    expenses = [];
+                    if (data.values && data.values.length > 1) {
+                        for (let i = 1; i < data.values.length; i++) {
+                            const row = data.values[i];
+                            if (row.length >= 6 && row[5] !== "") { // Skip empty amounts
+                                expenses.push({
+                                    id: row[0],
+                                    date: row[1],
+                                    vendor: row[2],
+                                    description: row[3],
+                                    category: row[4],
+                                    amount: Number(row[5]) // Critical fix: convert to number 
+                                });
+                            }
+                        }
+                    }
+                    
+                    if (expenses.length > 0) {
+                        showStatus(`Loaded ${expenses.length} expenses from Google Sheets successfully`, 'success');
+                    } else {
+                        showStatus('No data in spreadsheet, using sample data', 'error');  
+                        loadSampleData();
+                    }
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    showStatus('Google Sheets connection failed. Using sample data.', 'error');
+                    loadSampleData();
+                }
+                
+                updateDisplay();
             }
 
             // Load sample data for fallback
@@ -270,16 +303,13 @@
                 expenses = [
                     { id: '1', date: "07/20/2026", vendor: "Wendy's", description: "Nuggs Deal", category: "Food & Dining", amount: 4.00 },
                     { id: '2', date: "07/13/2026", vendor: "Whole Foods", description: "Groceries", category: "Groceries", amount: 30.00 },
-                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 },
-                    { id: '4', date: "07/18/2026", vendor: "Target", description: "Toys", category: "Entertainment", amount: 25.00 },
-                    { id: '5', date: "07/22/2026", vendor: "Domino's", description: "Pizza", category: "Food & Dining", amount: 18.50 }
+                    { id: '3', date: "07/15/2026", vendor: "Costco", description: "Household items", category: "Other", amount: 50.00 }
                 ];
-                updateDisplay();
             }
 
             // Update display with expense data
             function updateDisplay() {
-                // Update table
+                // Update table with all expenses (not just 10)
                 const tableBody = document.getElementById('expensesBody');
                 tableBody.innerHTML = '';
                 
@@ -294,7 +324,7 @@
                     tableBody.appendChild(row);
                 });
 
-                // Update analytics
+                // Update analytics with correct calculation
                 if (expenses.length > 0) {
                     const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
                     const average = total / expenses.length;
