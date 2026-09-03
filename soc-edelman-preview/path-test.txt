@@ -1,0 +1,1 @@
+/mnt/data/github-deploy-soc/c1.js
