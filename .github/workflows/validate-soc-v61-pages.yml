@@ -37,7 +37,7 @@ jobs:
           const hash = crypto.createHash('sha256').update(html).digest('hex')
           assert.strictEqual(hash, 'f897d790b8be4ec7004efb41ad257bc79d454b3e6ae6b6bb544bed6838e3a85f')
           const text = html.toString('utf8')
-          assert(text.includes('V61 advertiser concept edition'))
+          assert(text.includes('advertiser demonstration built from the V61 design system'))
           assert(text.includes('Meet the downtown rescue looking for a home this week'))
           assert(text.includes('What makes an apartment building truly connected in 2026?'))
           assert(text.includes('noindex,nofollow,noarchive'))
