@@ -1,6 +1,6 @@
 {
-  "chunks": 26,
-  "compressedBytes": 1378344,
+  "chunks": 22,
+  "compressedBytes": 1190880,
   "failedRoutes": [],
   "homepageTextLength": 6718,
   "routes": [
@@ -175,6 +175,6 @@
     "/topics/weekend-guide",
     "/whats-on"
   ],
-  "sourceCommit": "13f4d0ac9a5aff49ba5ee60cfc24bc041cc718a1",
+  "sourceCommit": "c1eeca9f8f63ca6a39af4b9035b5fe78b75763fe",
   "v61Commit": "2f4200692a3844aa538b53e6650b833b83b13605"
 }
