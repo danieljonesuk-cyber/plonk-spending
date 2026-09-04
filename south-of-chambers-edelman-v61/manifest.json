@@ -1,8 +1,8 @@
 {
-  "chunks": 12,
-  "compressedBytes": 648456,
+  "chunks": 26,
+  "compressedBytes": 1378344,
   "failedRoutes": [],
-  "homepageTextLength": 6669,
+  "homepageTextLength": 6718,
   "routes": [
     "/",
     "/2026/08/a-good-downtown-day-for-25-dollars",
@@ -19,8 +19,8 @@
     "/2026/08/fulton-street-eastbound-lane-closes-overnight-this-week",
     "/2026/08/inside-the-kitchens-shaping-downtowns-next-dining-chapter",
     "/2026/08/is-the-downtown-lunch-deal-really-a-deal",
+    "/2026/08/meet-lawrence-downtowns-husky-pointer-and-long-haired-collie-mix",
     "/2026/08/meet-the-animals-everybody-knows",
-    "/2026/08/meet-the-downtown-rescue-looking-for-a-home-this-week",
     "/2026/08/moving-downtown-check-your-connection-before-you-sign",
     "/2026/08/reading-the-new-downtown-building-filing",
     "/2026/08/rector-street-elevator-is-back-in-service",
@@ -35,6 +35,7 @@
     "/2026/08/the-number-behind-this-weeks-rent-story",
     "/2026/08/the-perfect-downtown-saturday-from-breakfast-to-sunset",
     "/2026/08/three-answers-from-the-downtown-civic-meeting",
+    "/2026/08/two-condo-boards-force-costly-detour-in-hurricane-sandy-flood-wall",
     "/2026/08/two-new-benches-arrive-at-bowling-green",
     "/2026/08/water-shutdown-notice-covers-three-seaport-blocks",
     "/2026/08/what-happens-after-the-sidewalk-shed-comes-down",
@@ -107,9 +108,9 @@
     "/terms",
     "/topics/accessibility",
     "/topics/accountability",
-    "/topics/adoption",
     "/topics/apartments",
     "/topics/art",
+    "/topics/battery-park-city",
     "/topics/best-dressed-downtown",
     "/topics/bowling-green",
     "/topics/buildings",
@@ -128,6 +129,7 @@
     "/topics/downtown-photograph",
     "/topics/ferry",
     "/topics/first-world-problems",
+    "/topics/flood-protection",
     "/topics/food",
     "/topics/free",
     "/topics/fulton-street",
@@ -173,6 +175,6 @@
     "/topics/weekend-guide",
     "/whats-on"
   ],
-  "sourceCommit": "8416e4b235e65d8536bd41dbb0141b65a4f1d035",
+  "sourceCommit": "13f4d0ac9a5aff49ba5ee60cfc24bc041cc718a1",
   "v61Commit": "2f4200692a3844aa538b53e6650b833b83b13605"
 }
