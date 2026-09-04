@@ -4,38 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="description" content="South of Chambers V61 advertiser concept edition.">
-<title>South of Chambers — V61 advertiser concept edition</title>
+<meta name="description" content="Private rendered inspection copy of the South of Chambers V61 advertiser demonstration.">
+<title>South of Chambers — V61 advertiser demonstration</title>
 <style>
-:root{--paper:#fbfaf6;--ink:#11110f;--red:#982f2a;--blue:#15384b}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif}main{width:min(720px,calc(100% - 40px));margin:12vh auto;padding:32px;border-top:8px solid var(--red)}h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(38px,7vw,62px);line-height:.92;letter-spacing:-.045em;margin:0 0 18px}p{font-size:15px;line-height:1.55}.status{color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.error{display:none;background:#f2e8dc;border-left:5px solid var(--red);padding:14px}
+*{box-sizing:border-box}body{margin:0;background:#fbfaf6;color:#111;font-family:Arial,Helvetica,sans-serif}.soc-loading{width:min(760px,calc(100% - 40px));margin:12vh auto;border-top:8px solid #982f2a;padding:28px 0}.soc-loading h1{font-family:Georgia,serif;font-size:clamp(42px,8vw,72px);letter-spacing:-.06em;line-height:.9;margin:12px 0}.soc-loading p{line-height:1.55}.soc-loading strong{color:#15384b;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
 </style>
 </head>
 <body>
-<main id="loading">
-<p class="status">Private advertiser demonstration · V61 source</p>
-<h1>South of Chambers</h1>
-<p>Loading the V61-based advertiser concept edition…</p>
-<p class="error" id="error">The preview could not be opened in this browser. Please refresh the page in a current version of Chrome, Safari, Edge or Firefox.</p>
-</main>
-<script src="v61-payload-1.js?v=33925155"></script>
-<script src="v61-payload-2.js?v=33925155"></script>
-<script src="v61-payload-3.js?v=33925155"></script>
-<script src="v61-payload-4.js?v=33925155"></script>
-<script>
-(async()=>{
-  try{
-    if(!window.__SOC_V61||typeof DecompressionStream==='undefined')throw new Error('Required preview data or gzip support unavailable');
-    const bytes=Uint8Array.from(atob(window.__SOC_V61),character=>character.charCodeAt(0));
-    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const html=await new Response(stream).text();
-    document.open();
-    document.write(html);
-    document.close();
-  }catch(error){
-    console.error(error);
-    document.getElementById('error').style.display='block';
-  }
-})();
-</script>
+<main class="soc-loading"><strong>Private V61 inspection copy</strong><h1>South of Chambers</h1><p>Loading the rendered website…</p></main>
+<script src="payload-01.js"></script>
+<script src="payload-02.js"></script>
+<script src="payload-03.js"></script>
+<script src="payload-04.js"></script>
+<script src="payload-05.js"></script>
+<script src="payload-06.js"></script>
+<script src="payload-07.js"></script>
+<script src="payload-08.js"></script>
+<script src="payload-09.js"></script>
+<script src="payload-10.js"></script>
+<script src="payload-11.js"></script>
+<script src="payload-12.js"></script>
+<script src="loader.js"></script>
 </body>
 </html>
