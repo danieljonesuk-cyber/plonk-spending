@@ -17,9 +17,9 @@ jobs:
       - name: Check out public Pages repository
         uses: actions/checkout@v4
 
-      - name: Download the corrected fully rendered V61 build artifact
+      - name: Download the Lawrence and flood-wall V61 build artifact
         env:
-          ARTIFACT_URL: 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-8140-81f5-a4af-35d1068f82b8/raw?se=2026-09-04T13%3A49%3A04Z&sp=r&sv=2026-02-06&sr=b&scid=ab43b3b9-f7e2-5137-b01c-34a6bcbda661&skoid=2757bbe4-5137-4324-975b-acedc0bad279&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-04T03%3A05%3A36Z&ske=2026-09-05T03%3A05%3A36Z&sks=b&skv=2026-02-06&sig=7dd%2Bw82pDpCePYHHPD54gBBWxtGssD2QaEVVTJ5j3gI%3D'
+          ARTIFACT_URL: 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-3a3c-81f5-aa24-f4c732908909/raw?se=2026-09-04T15%3A54%3A27Z&sp=r&sv=2026-02-06&sr=b&scid=6bfc021f-ef4c-545f-832f-e77ba56eb63c&skoid=2757bbe4-5137-4324-975b-acedc0bad279&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-04T11%3A33%3A23Z&ske=2026-09-05T11%3A33%3A23Z&sks=b&skv=2026-02-06&sig=j7TTO7CupeOFTJZJVbo/55lUoivjXscnxVRnl1WPLmQ%3D'
         run: |
           curl --fail --location --retry 3 --retry-delay 2 --output /tmp/soc-v61.zip "$ARTIFACT_URL"
           rm -rf /tmp/soc-v61-unpacked south-of-chambers-edelman south-of-chambers-edelman-v61
@@ -34,13 +34,14 @@ jobs:
             test -f "$directory/index.html"
             test -f "$directory/loader.js"
             test -f "$directory/manifest.json"
-            test -f "$directory/payload-12.js"
-            grep -q '"homepageTextLength": 6669' "$directory/manifest.json"
-            grep -q 'meet-the-downtown-rescue-looking-for-a-home-this-week' "$directory/manifest.json"
+            test -f "$directory/payload-26.js"
+            grep -q '"homepageTextLength": 6718' "$directory/manifest.json"
+            grep -q 'meet-lawrence-downtowns-husky-pointer-and-long-haired-collie-mix' "$directory/manifest.json"
+            grep -q 'two-condo-boards-force-costly-detour-in-hurricane-sandy-flood-wall' "$directory/manifest.json"
             grep -q 'what-makes-an-apartment-building-truly-connected-in-2026' "$directory/manifest.json"
           done
 
-      - name: Commit the corrected public inspection copy
+      - name: Commit the revised public inspection copy
         run: |
           git config user.name 'South of Chambers build bot'
           git config user.email 'actions@users.noreply.github.com'
@@ -48,6 +49,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'The public inspection copy is already current.'
           else
-            git commit -m 'Publish the corrected full V61 advertiser inspection site'
+            git commit -m 'Publish Lawrence and flood-wall V61 advertiser revision'
             git push origin HEAD:main
           fi
