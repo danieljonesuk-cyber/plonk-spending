@@ -1,0 +1,49 @@
+name: Validate South of Chambers V61 pages build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'south-of-chambers-edelman/index.html'
+      - 'south-of-chambers-edelman/v61-payload-*.js'
+      - '.github/workflows/validate-soc-v61-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reassemble and validate the deployed edition
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const zlib = require('zlib')
+          const crypto = require('crypto')
+          const assert = require('assert')
+          const base = 'south-of-chambers-edelman'
+          const chunks = [1,2,3,4].map((number) => {
+            const source = fs.readFileSync(`${base}/v61-payload-${number}.js`, 'utf8')
+            const match = source.match(/\+'([^']+)';/)
+            assert(match, `Payload ${number} is malformed`)
+            return match[1]
+          }).join('')
+          assert.strictEqual(chunks.length, 25388, 'Compressed payload length changed')
+          const html = zlib.gunzipSync(Buffer.from(chunks, 'base64'))
+          assert.strictEqual(html.length, 72337, 'Decompressed page length changed')
+          const hash = crypto.createHash('sha256').update(html).digest('hex')
+          assert.strictEqual(hash, 'f897d790b8be4ec7004efb41ad257bc79d454b3e6ae6b6bb544bed6838e3a85f')
+          const text = html.toString('utf8')
+          assert(text.includes('V61 advertiser concept edition'))
+          assert(text.includes('Meet the downtown rescue looking for a home this week'))
+          assert(text.includes('What makes an apartment building truly connected in 2026?'))
+          assert(text.includes('noindex,nofollow,noarchive'))
+          const index = fs.readFileSync(`${base}/index.html`, 'utf8')
+          for (let number = 1; number <= 4; number += 1) {
+            assert(index.includes(`v61-payload-${number}.js`))
+          }
+          console.log(`Validated ${html.length} bytes, sha256 ${hash}`)
+          NODE
