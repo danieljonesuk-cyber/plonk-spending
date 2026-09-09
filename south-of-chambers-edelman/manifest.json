@@ -1,6 +1,6 @@
 {
   "chunks": 22,
-  "compressedBytes": 1190880,
+  "compressedBytes": 890113,
   "failedRoutes": [],
   "homepageTextLength": 6718,
   "routes": [
@@ -175,6 +175,13 @@
     "/topics/weekend-guide",
     "/whats-on"
   ],
-  "sourceCommit": "c1eeca9f8f63ca6a39af4b9035b5fe78b75763fe",
-  "v61Commit": "2f4200692a3844aa538b53e6650b833b83b13605"
+  "sourceCommit": "0750c5bc8da2f12b45f1f6c9d06c0c02148e1170",
+  "v61Commit": "2f4200692a3844aa538b53e6650b833b83b13605",
+  "displayDate": "2026-09-09",
+  "header": "centered-dominant-masthead",
+  "mainAdvertiserDummy": true,
+  "removedTopRail": "Life Today",
+  "updatedFromCommit": "280412fa",
+  "sideSupportHeadlinePlacement": "above-image",
+  "utilitySourceStampInTopStrip": false
 }
