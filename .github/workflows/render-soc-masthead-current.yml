@@ -1,0 +1,149 @@
+name: Render SOC masthead current panorama
+
+on:
+  push:
+    branches:
+      - masthead-raster-fix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-current:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Pillow and requests
+        run: python -m pip install --disable-pip-version-check pillow requests
+
+      - name: Build PNG and JPEG mastheads
+        shell: bash
+        run: |
+          cat > /tmp/render_current.py <<'PY'
+          from __future__ import annotations
+          import io, json
+          from pathlib import Path
+          import requests
+          from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+          OUT = Path('out-current')
+          OUT.mkdir(exist_ok=True)
+          FILE_TITLE = 'File:Panorama of Jersey City, Manhattan, and Brooklyn.jpg'
+          api = 'https://commons.wikimedia.org/w/api.php'
+          params = {
+              'action':'query', 'format':'json', 'prop':'imageinfo',
+              'iiprop':'url|size|extmetadata', 'iiurlwidth':6000,
+              'titles':FILE_TITLE,
+          }
+          headers = {'User-Agent':'SouthOfChambersMasthead/1.0 (editorial design render)'}
+          r = requests.get(api, params=params, headers=headers, timeout=60)
+          r.raise_for_status()
+          page = next(iter(r.json()['query']['pages'].values()))
+          info = page['imageinfo'][0]
+          source_url = info.get('thumburl') or info['url']
+          image_response = requests.get(source_url, headers=headers, timeout=120)
+          image_response.raise_for_status()
+          source = Image.open(io.BytesIO(image_response.content)).convert('RGB')
+
+          W, H = 2400, 760
+          PHOTO_X, PHOTO_Y, PHOTO_W, PHOTO_H = 44, 304, 2312, 406
+          NAVY = (7, 26, 49)
+          RED = (153, 31, 50)
+          PAPER = (255, 254, 250)
+          font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf'
+          if not Path(font_path).exists():
+              font_path = '/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf'
+
+          def make_title(draw):
+              a, b = 'The South of Chambers', 'Mail'
+              size = 210
+              while True:
+                  font = ImageFont.truetype(font_path, size)
+                  aw = draw.textbbox((0,0), a, font=font)[2]
+                  bw = draw.textbbox((0,0), b, font=font)[2]
+                  gap = max(15, round(size * 0.035))
+                  if aw + gap + bw <= W - 150:
+                      return font, a, b, aw, bw, gap
+                  size -= 2
+
+          def render(center_fraction, suffix):
+              canvas = Image.new('RGB', (W,H), PAPER)
+              draw = ImageDraw.Draw(canvas)
+              font, a, b, aw, bw, gap = make_title(draw)
+              x = (W - (aw+gap+bw)) // 2
+              y = 36
+              draw.text((x+1,y+2), a, font=font, fill=(220,220,218))
+              draw.text((x+aw+gap+1,y+2), b, font=font, fill=(225,216,216))
+              draw.text((x,y), a, font=font, fill=NAVY)
+              draw.text((x+aw+gap,y), b, font=font, fill=RED)
+
+              sw, sh = source.size
+              crop_h = min(sh, round(sw / (PHOTO_W/PHOTO_H)))
+              cy = round(sh * center_fraction)
+              top = max(0, min(sh-crop_h, cy-crop_h//2))
+              view = source.crop((0,top,sw,top+crop_h)).resize((PHOTO_W,PHOTO_H), Image.Resampling.LANCZOS)
+              view = ImageEnhance.Color(view).enhance(0.82)
+              view = ImageEnhance.Contrast(view).enhance(1.04)
+              view = Image.blend(view, Image.new('RGB',view.size,RED), 0.032)
+
+              fade = Image.new('RGBA', view.size, (255,255,255,0))
+              fd = ImageDraw.Draw(fade)
+              for yy in range(62):
+                  alpha = round(135*(1-yy/62)**1.7)
+                  fd.line((0,yy,PHOTO_W,yy), fill=(255,255,255,alpha))
+              view = Image.alpha_composite(view.convert('RGBA'), fade).convert('RGB')
+              canvas.paste(view, (PHOTO_X,PHOTO_Y))
+
+              draw = ImageDraw.Draw(canvas)
+              draw.rectangle((44,288,2356,293), fill=RED)
+              draw.rectangle((44,718,2356,727), fill=RED)
+              draw.rectangle((44,736,2356,738), fill=(90,101,112))
+              png = OUT / f'the-south-of-chambers-mail-{suffix}.png'
+              jpg = OUT / f'the-south-of-chambers-mail-{suffix}.jpg'
+              canvas.save(png,'PNG',optimize=True)
+              canvas.save(jpg,'JPEG',quality=95,optimize=True,progressive=True)
+              return canvas, [0,top,sw,top+crop_h]
+
+          variants = [(0.42,'upper'),(0.52,'center'),(0.62,'lower')]
+          results=[]; crop_data={}
+          for center,name in variants:
+              im,box=render(center,name)
+              results.append((name,im)); crop_data[name]=box
+
+          sheet_w=1200; thumb_h=round(H*sheet_w/W); label_h=48
+          sheet=Image.new('RGB',(sheet_w,(thumb_h+label_h)*3),(235,233,227))
+          sd=ImageDraw.Draw(sheet); label_font=ImageFont.truetype(font_path,28)
+          yy=0
+          for name,im in results:
+              sd.text((18,yy+8),name.upper(),font=label_font,fill=NAVY)
+              yy+=label_h
+              sheet.paste(im.resize((sheet_w,thumb_h),Image.Resampling.LANCZOS),(0,yy))
+              yy+=thumb_h
+          sheet.save(OUT/'current-panorama-contact-sheet.png','PNG',optimize=True)
+
+          meta=info.get('extmetadata',{})
+          license_name=meta.get('LicenseShortName',{}).get('value','Creative Commons license')
+          description_url=info.get('descriptionurl','https://commons.wikimedia.org/wiki/File:Panorama_of_Jersey_City,_Manhattan,_and_Brooklyn.jpg')
+          (OUT/'SOURCE-AND-LICENSE.txt').write_text(
+              'SOURCE AND LICENSE\n\n'
+              'Photographic source:\nPanorama of Jersey City, Manhattan, and Brooklyn.jpg\n\n'
+              'Photograph date:\nDecember 8, 2023\n\n'
+              f'Source page:\n{description_url}\n\n'
+              f'License:\n{license_name}\n\n'
+              'Design notes:\n'
+              '- The cityscape is taken from a single real panorama. No buildings, piers or bridges were generated, reconstructed, relabeled or moved.\n'
+              '- The only edits are a crop, resize, mild color treatment and burgundy editorial accents.\n'
+              '- No slogan, location tags or parent-publication line appear.\n',
+              encoding='utf-8'
+          )
+          (OUT/'render-metadata.json').write_text(json.dumps({'source_size':source.size,'crops':crop_data,'source_page':description_url},indent=2),encoding='utf-8')
+          PY
+          python /tmp/render_current.py
+
+      - name: Upload current masthead files
+        uses: actions/upload-artifact@v4
+        with:
+          name: soc-mail-current-panorama
+          path: out-current/
+          if-no-files-found: error
+          retention-days: 7
