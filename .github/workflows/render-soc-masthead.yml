@@ -24,32 +24,34 @@ jobs:
 
           import io
           import json
-          import math
-          import os
           from pathlib import Path
 
           import requests
-          from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+          from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
           OUT = Path("out")
           OUT.mkdir(exist_ok=True)
 
-          COMMONS_FILE = "File:Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg"
+          COMMONS_FILE = "File:Lower Manhattan from Governors Island August 2017 panorama.jpg"
           API = "https://commons.wikimedia.org/w/api.php"
           params = {
               "action": "query",
               "format": "json",
               "prop": "imageinfo",
               "iiprop": "url|size|extmetadata",
-              "iiurlwidth": 6000,
+              "iiurlwidth": 8000,
               "titles": COMMONS_FILE,
           }
           headers = {"User-Agent": "SouthOfChambersMasthead/1.0 (editorial design render)"}
-          data = requests.get(API, params=params, headers=headers, timeout=60).json()
+          response = requests.get(API, params=params, headers=headers, timeout=60)
+          response.raise_for_status()
+          data = response.json()
           page = next(iter(data["query"]["pages"].values()))
+          if "imageinfo" not in page:
+              raise RuntimeError(json.dumps(page, indent=2))
           info = page["imageinfo"][0]
           photo_url = info.get("thumburl") or info["url"]
-          raw = requests.get(photo_url, headers=headers, timeout=120)
+          raw = requests.get(photo_url, headers=headers, timeout=180)
           raw.raise_for_status()
           photo = Image.open(io.BytesIO(raw.content)).convert("RGB")
 
@@ -57,127 +59,111 @@ jobs:
           BG = (255, 254, 250)
           NAVY = (7, 26, 49)
           BURGUNDY = (153, 31, 50)
-          canvas = Image.new("RGB", (W, H), BG)
-          draw = ImageDraw.Draw(canvas)
+          PHOTO_X, PHOTO_Y, PHOTO_W, PHOTO_H = 44, 304, 2312, 406
 
-          regular_font = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
           bold_font = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
           if not Path(bold_font).exists():
               bold_font = "/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf"
 
-          left_text = "The South of Chambers"
-          right_text = "Mail"
-          target_width = W - 150
-          font_size = 210
-          while font_size > 80:
-              font = ImageFont.truetype(bold_font, font_size)
-              left_box = draw.textbbox((0, 0), left_text, font=font, stroke_width=0)
-              right_box = draw.textbbox((0, 0), right_text, font=font, stroke_width=0)
-              left_w = left_box[2] - left_box[0]
-              right_w = right_box[2] - right_box[0]
-              gap = max(15, round(font_size * 0.035))
-              if left_w + gap + right_w <= target_width:
-                  break
-              font_size -= 2
+          def title_metrics(draw):
+              left_text = "The South of Chambers"
+              right_text = "Mail"
+              target_width = W - 150
+              font_size = 210
+              while font_size > 80:
+                  font = ImageFont.truetype(bold_font, font_size)
+                  lb = draw.textbbox((0, 0), left_text, font=font)
+                  rb = draw.textbbox((0, 0), right_text, font=font)
+                  lw = lb[2] - lb[0]
+                  rw = rb[2] - rb[0]
+                  gap = max(15, round(font_size * 0.035))
+                  if lw + gap + rw <= target_width:
+                      return font, left_text, right_text, lw, rw, gap
+                  font_size -= 2
+              raise RuntimeError("Could not fit title")
 
-          total_w = left_w + gap + right_w
-          x = (W - total_w) // 2
-          y = 36
-          shadow = (7, 26, 49, 24)
-          # Very restrained shadow to keep type crisp on a white newspaper field.
-          draw.text((x + 1, y + 2), left_text, font=font, fill=(220, 220, 218))
-          draw.text((x + left_w + gap + 1, y + 2), right_text, font=font, fill=(225, 216, 216))
-          draw.text((x, y), left_text, font=font, fill=NAVY)
-          draw.text((x + left_w + gap, y), right_text, font=font, fill=BURGUNDY)
+          def make_crop(center_fraction):
+              src_w, src_h = photo.size
+              target_ratio = PHOTO_W / PHOTO_H
+              crop_h = min(src_h, int(round(src_w / target_ratio)))
+              center_y = round(src_h * center_fraction)
+              top = max(0, min(src_h - crop_h, center_y - crop_h // 2))
+              crop = photo.crop((0, top, src_w, top + crop_h))
+              crop = crop.resize((PHOTO_W, PHOTO_H), Image.Resampling.LANCZOS)
+              crop = ImageEnhance.Color(crop).enhance(0.80)
+              crop = ImageEnhance.Contrast(crop).enhance(1.05)
+              wash = Image.new("RGB", crop.size, BURGUNDY)
+              crop = Image.blend(crop, wash, 0.038)
+              return crop, [0, top, src_w, top + crop_h]
 
-          # Find the most information-rich horizontal strip of the real source photograph.
-          # This preserves the source image exactly; it only trims sky and water to the masthead ratio.
-          photo_x0, photo_y0 = 44, 304
-          photo_w, photo_h = 2312, 406
-          target_ratio = photo_w / photo_h
-          src_w, src_h = photo.size
-          crop_h = min(src_h, int(round(src_w / target_ratio)))
+          def render(center_fraction, suffix):
+              canvas = Image.new("RGB", (W, H), BG)
+              draw = ImageDraw.Draw(canvas)
+              font, left_text, right_text, lw, rw, gap = title_metrics(draw)
+              total_w = lw + gap + rw
+              x = (W - total_w) // 2
+              y = 36
+              draw.text((x + 1, y + 2), left_text, font=font, fill=(220, 220, 218))
+              draw.text((x + lw + gap + 1, y + 2), right_text, font=font, fill=(225, 216, 216))
+              draw.text((x, y), left_text, font=font, fill=NAVY)
+              draw.text((x + lw + gap, y), right_text, font=font, fill=BURGUNDY)
 
-          small_w = 1000
-          small_h = max(1, round(src_h * small_w / src_w))
-          gray = photo.convert("L").resize((small_w, small_h), Image.Resampling.LANCZOS)
-          edges = gray.filter(ImageFilter.FIND_EDGES)
-          # Row energy rewards real architectural detail and avoids empty sky/water.
-          pix = edges.load()
-          row_energy = []
-          for yy in range(small_h):
-              total = 0
-              for xx in range(small_w):
-                  total += pix[xx, yy]
-              row_energy.append(total / small_w)
+              crop, crop_box = make_crop(center_fraction)
+              canvas.paste(crop, (PHOTO_X, PHOTO_Y))
 
-          win = max(1, round(crop_h * small_h / src_h))
-          prefix = [0.0]
-          for v in row_energy:
-              prefix.append(prefix[-1] + v)
-          min_start = max(0, round(small_h * 0.18))
-          max_start = min(small_h - win, round(small_h * 0.76))
-          best_start = min_start
-          best_score = -1.0
-          for start in range(min_start, max_start + 1):
-              score = prefix[start + win] - prefix[start]
-              # Gentle bias toward the middle/lower skyline band, not the sky.
-              center = (start + win / 2) / small_h
-              score *= 1.0 - 0.16 * abs(center - 0.58)
-              if score > best_score:
-                  best_score = score
-                  best_start = start
-          top = round(best_start * src_h / small_h)
-          top = max(0, min(src_h - crop_h, top))
-          crop = photo.crop((0, top, src_w, top + crop_h))
-          crop = crop.resize((photo_w, photo_h), Image.Resampling.LANCZOS)
+              # A short white fade at the top keeps the transition editorial rather than photographic.
+              fade = Image.new("RGBA", (PHOTO_W, PHOTO_H), (255, 255, 255, 0))
+              fd = ImageDraw.Draw(fade)
+              for i in range(72):
+                  alpha = round(150 * (1 - i / 72) ** 1.7)
+                  fd.line((0, i, PHOTO_W, i), fill=(255, 255, 255, alpha))
+              crop_faded = Image.alpha_composite(crop.convert("RGBA"), fade).convert("RGB")
+              canvas.paste(crop_faded, (PHOTO_X, PHOTO_Y))
 
-          # Newspaper treatment: retain the true scene while muting saturation slightly.
-          crop = ImageEnhance.Color(crop).enhance(0.76)
-          crop = ImageEnhance.Contrast(crop).enhance(1.04)
-          red_wash = Image.new("RGB", crop.size, BURGUNDY)
-          crop = Image.blend(crop, red_wash, 0.045)
+              draw = ImageDraw.Draw(canvas)
+              draw.rectangle((44, 288, 2356, 293), fill=BURGUNDY)
+              draw.rectangle((44, 718, 2356, 727), fill=BURGUNDY)
+              draw.rectangle((44, 736, 2356, 738), fill=(90, 101, 112))
 
-          canvas.paste(crop, (photo_x0, photo_y0))
+              png = OUT / f"the-south-of-chambers-mail-masthead-{suffix}.png"
+              jpg = OUT / f"the-south-of-chambers-mail-masthead-{suffix}.jpg"
+              canvas.save(png, "PNG", optimize=True)
+              canvas.save(jpg, "JPEG", quality=95, optimize=True, progressive=True)
+              return canvas, crop_box
 
-          # Editorial fades blend the photograph into the white masthead without changing content.
-          overlay = Image.new("RGBA", (photo_w, photo_h), (255, 255, 255, 0))
-          od = ImageDraw.Draw(overlay)
-          fade_top = 105
-          for i in range(fade_top):
-              alpha = round(220 * (1 - i / fade_top) ** 1.8)
-              od.line((0, i, photo_w, i), fill=(255, 255, 255, alpha))
-          fade_bottom = 45
-          for i in range(fade_bottom):
-              alpha = round(40 * (i / fade_bottom))
-              yb = photo_h - fade_bottom + i
-              od.line((0, yb, photo_w, yb), fill=(255, 255, 255, alpha))
-          treated = Image.alpha_composite(crop.convert("RGBA"), overlay).convert("RGB")
-          canvas.paste(treated, (photo_x0, photo_y0))
+          variants = [
+              (0.43, "upper"),
+              (0.52, "center"),
+              (0.61, "lower"),
+          ]
+          rendered = []
+          crops = {}
+          for center, suffix in variants:
+              image, box = render(center, suffix)
+              rendered.append((suffix, image))
+              crops[suffix] = box
 
-          draw = ImageDraw.Draw(canvas)
-          draw.rectangle((44, 288, 2356, 293), fill=BURGUNDY)
-          draw.rectangle((44, 718, 2356, 727), fill=BURGUNDY)
-          draw.rectangle((44, 736, 2356, 738), fill=(90, 101, 112))
-
-          png_path = OUT / "the-south-of-chambers-mail-masthead.png"
-          jpg_path = OUT / "the-south-of-chambers-mail-masthead.jpg"
-          canvas.save(png_path, "PNG", optimize=True)
-          canvas.save(jpg_path, "JPEG", quality=95, optimize=True, progressive=True)
+          # Contact sheet for visual verification before choosing the final crop.
+          sheet_w = 1200
+          thumb_h = round(H * sheet_w / W)
+          sheet = Image.new("RGB", (sheet_w, thumb_h * len(rendered) + 48 * len(rendered)), (235, 233, 227))
+          sd = ImageDraw.Draw(sheet)
+          label_font = ImageFont.truetype(bold_font, 28)
+          y_cursor = 0
+          for suffix, image in rendered:
+              sd.text((18, y_cursor + 8), suffix.upper(), font=label_font, fill=NAVY)
+              y_cursor += 48
+              thumb = image.resize((sheet_w, thumb_h), Image.Resampling.LANCZOS)
+              sheet.paste(thumb, (0, y_cursor))
+              y_cursor += thumb_h
+          sheet.save(OUT / "masthead-crop-contact-sheet.png", "PNG", optimize=True)
 
           metadata = info.get("extmetadata", {})
-          artist = metadata.get("Artist", {}).get("value", "Joe Mabel")
           license_short = metadata.get("LicenseShortName", {}).get("value", "CC BY-SA 4.0")
-          description_url = info.get("descriptionurl", "https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg")
-          attribution = f'''SOURCE AND LICENSE\n\nPhotographic source:\nLower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg\n\nPhotographer:\nJoe Mabel\n\nSource page:\n{description_url}\n\nLicense:\n{license_short}\n\nDesign notes:\n- The image is a crop of the real source photograph; no buildings or structures were generated, reconstructed or moved.\n- There are no landmark labels, neighborhood tags, slogan or parent-publication line.\n- Burgundy appears only in “Mail,” the rules and a restrained photographic wash.\n'''
+          description_url = info.get("descriptionurl", "https://commons.wikimedia.org/wiki/File:Lower_Manhattan_from_Governors_Island_August_2017_panorama.jpg")
+          attribution = f'''SOURCE AND LICENSE\n\nPhotographic source:\nLower Manhattan from Governors Island August 2017 panorama.jpg\n\nPhotographer/source attribution:\nSee the Wikimedia Commons source page below.\n\nSource page:\n{description_url}\n\nLicense:\n{license_short}\n\nDesign notes:\n- Every skyline element is taken from one real panoramic photograph; nothing was generated, reconstructed, relocated or labeled.\n- The only edits are cropping, resizing, mild color treatment and the burgundy editorial accents.\n- There is no slogan, location-label row or parent-publication line.\n'''
           (OUT / "SOURCE-AND-LICENSE.txt").write_text(attribution, encoding="utf-8")
-
-          print(json.dumps({
-              "source_size": photo.size,
-              "crop": [0, top, src_w, top + crop_h],
-              "png": str(png_path),
-              "jpg": str(jpg_path),
-          }, indent=2))
+          (OUT / "render-metadata.json").write_text(json.dumps({"source_size": photo.size, "crops": crops, "source_url": description_url}, indent=2), encoding="utf-8")
           PY
           python /tmp/render_masthead.py
 
