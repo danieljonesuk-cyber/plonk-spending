@@ -1,0 +1,110 @@
+name: Build South of Chambers Mail masthead
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-soc-mail-masthead.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Download verified skyline photograph
+        run: |
+          curl --fail --location --retry 4 \
+            'https://upload.wikimedia.org/wikipedia/commons/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg' \
+            --output lower-manhattan-source.jpg
+          test -s lower-manhattan-source.jpg
+
+      - name: Build self-contained SVG and PNG
+        shell: bash
+        run: |
+          mkdir -p masthead-output
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+
+          image = Path('lower-manhattan-source.jpg').read_bytes()
+          encoded = base64.b64encode(image).decode('ascii')
+
+          svg = f'''<?xml version="1.0" encoding="UTF-8"?>
+          <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="760" viewBox="0 0 2400 760" role="img" aria-labelledby="title desc">
+            <title id="title">The South of Chambers Mail masthead</title>
+            <desc id="desc">A photographic South of Chambers Mail masthead using a real 2026 Lower Manhattan skyline photograph. No slogan, place tags or parent-company line.</desc>
+            <metadata>
+              Source photograph: Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg
+              Photographer: Joe Mabel
+              License: Creative Commons Attribution-ShareAlike 4.0 International
+              Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg
+              Changes: cropped, desaturated, tinted and incorporated into a newspaper masthead.
+            </metadata>
+            <defs>
+              <clipPath id="photoClip"><rect x="44" y="326" width="2312" height="382"/></clipPath>
+              <linearGradient id="topFade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fffefa" stop-opacity="0.98"/>
+                <stop offset="0.32" stop-color="#fffefa" stop-opacity="0.55"/>
+                <stop offset="1" stop-color="#fffefa" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fffefa" stop-opacity="0"/>
+                <stop offset="1" stop-color="#fffefa" stop-opacity="0.18"/>
+              </linearGradient>
+              <filter id="photoTone" x="-5%" y="-5%" width="110%" height="110%">
+                <feColorMatrix type="saturate" values="0.18"/>
+                <feComponentTransfer>
+                  <feFuncR type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
+                  <feFuncG type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
+                  <feFuncB type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
+                </feComponentTransfer>
+              </filter>
+              <filter id="softShadow" x="-10%" y="-30%" width="120%" height="160%">
+                <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#061526" flood-opacity="0.12"/>
+              </filter>
+            </defs>
+            <rect width="2400" height="760" fill="#fffefa"/>
+            <g filter="url(#softShadow)">
+              <text x="120" y="253" font-family="Georgia, 'DejaVu Serif', serif" font-size="203" font-weight="700" letter-spacing="-7" fill="#071a31">The South of Chambers</text>
+              <text x="1954" y="253" font-family="Georgia, 'DejaVu Serif', serif" font-size="203" font-weight="700" letter-spacing="-7" fill="#991f32">Mail</text>
+            </g>
+            <g clip-path="url(#photoClip)">
+              <image x="44" y="326" width="2312" height="382" href="data:image/jpeg;base64,{encoded}" preserveAspectRatio="xMidYMid slice" filter="url(#photoTone)"/>
+              <rect x="44" y="326" width="2312" height="382" fill="#991f32" opacity="0.055" style="mix-blend-mode:multiply"/>
+              <rect x="44" y="326" width="2312" height="130" fill="url(#topFade)"/>
+              <rect x="44" y="620" width="2312" height="88" fill="url(#bottomFade)"/>
+            </g>
+            <rect x="44" y="309" width="2312" height="5" fill="#991f32"/>
+            <rect x="44" y="718" width="2312" height="9" fill="#991f32"/>
+            <rect x="44" y="735" width="2312" height="1.5" fill="#071a31" opacity="0.58"/>
+          </svg>'''
+
+          Path('masthead-output/soc-mail-self-contained.svg').write_text(svg, encoding='utf-8')
+          Path('masthead-output/SOURCE-AND-LICENSE.txt').write_text(
+              'Photograph: "Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg"\n'
+              'Photographer: Joe Mabel\n'
+              'License: CC BY-SA 4.0\n'
+              'Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg\n'
+              'Changes: cropped, desaturated, tinted and incorporated into a newspaper masthead.\n',
+              encoding='utf-8'
+          )
+          PY
+          rsvg-convert --width 2400 --height 760 masthead-output/soc-mail-self-contained.svg > masthead-output/soc-mail-masthead.png
+          test -s masthead-output/soc-mail-self-contained.svg
+          test -s masthead-output/soc-mail-masthead.png
+          ls -lh masthead-output
+
+      - name: Upload working masthead files
+        uses: actions/upload-artifact@v4
+        with:
+          name: soc-mail-working-masthead
+          path: masthead-output/
+          if-no-files-found: error
+          retention-days: 7
