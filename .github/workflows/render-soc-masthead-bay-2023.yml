@@ -1,0 +1,88 @@
+name: Render SOC masthead Upper Bay 2023
+
+on:
+  push:
+    branches:
+      - masthead-raster-fix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-bay:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python -m pip install --disable-pip-version-check pillow requests
+      - name: Render candidates
+        shell: bash
+        run: |
+          cat > /tmp/render.py <<'PY'
+          from pathlib import Path
+          import io, json, requests
+          from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
+          OUT=Path('out-bay'); OUT.mkdir(exist_ok=True)
+          TITLE='File:Lower Manhattan skyline from Upper New York Bay, 20231001 1031 0838.jpg'
+          params={'action':'query','format':'json','prop':'imageinfo','iiprop':'url|size|extmetadata','iiurlwidth':6000,'titles':TITLE}
+          headers={'User-Agent':'SouthOfChambersMasthead/1.0'}
+          page=next(iter(requests.get('https://commons.wikimedia.org/w/api.php',params=params,headers=headers,timeout=60).json()['query']['pages'].values()))
+          info=page['imageinfo'][0]
+          raw=requests.get(info.get('thumburl') or info['url'],headers=headers,timeout=120); raw.raise_for_status()
+          source=Image.open(io.BytesIO(raw.content)).convert('RGB')
+
+          W,H=2400,760; PX,PY,PW,PH=44,304,2312,406
+          NAVY=(7,26,49); RED=(153,31,50); PAPER=(255,254,250)
+          font_path='/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf'
+          if not Path(font_path).exists(): font_path='/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf'
+
+          def title_data(draw):
+              left,right='The South of Chambers','Mail'; size=210
+              while size>=80:
+                  font=ImageFont.truetype(font_path,size)
+                  lw=draw.textbbox((0,0),left,font=font)[2]; rw=draw.textbbox((0,0),right,font=font)[2]
+                  gap=max(15,round(size*.035))
+                  if lw+gap+rw<=W-150: return font,left,right,lw,rw,gap
+                  size-=2
+              raise RuntimeError('title does not fit')
+
+          def render(fraction,name):
+              canvas=Image.new('RGB',(W,H),PAPER); draw=ImageDraw.Draw(canvas)
+              font,left,right,lw,rw,gap=title_data(draw)
+              x=(W-(lw+gap+rw))//2; y=36
+              draw.text((x+1,y+2),left,font=font,fill=(220,220,218)); draw.text((x+lw+gap+1,y+2),right,font=font,fill=(225,216,216))
+              draw.text((x,y),left,font=font,fill=NAVY); draw.text((x+lw+gap,y),right,font=font,fill=RED)
+
+              sw,sh=source.size; crop_h=min(sh,round(sw/(PW/PH))); cy=round(sh*fraction)
+              top=max(0,min(sh-crop_h,cy-crop_h//2))
+              view=source.crop((0,top,sw,top+crop_h)).resize((PW,PH),Image.Resampling.LANCZOS)
+              view=ImageEnhance.Color(view).enhance(.80); view=ImageEnhance.Contrast(view).enhance(1.05)
+              view=Image.blend(view,Image.new('RGB',view.size,RED),.032)
+              fade=Image.new('RGBA',view.size,(255,255,255,0)); fd=ImageDraw.Draw(fade)
+              for yy in range(62): fd.line((0,yy,PW,yy),fill=(255,255,255,round(135*(1-yy/62)**1.7)))
+              canvas.paste(Image.alpha_composite(view.convert('RGBA'),fade).convert('RGB'),(PX,PY))
+              draw=ImageDraw.Draw(canvas); draw.rectangle((44,288,2356,293),fill=RED); draw.rectangle((44,718,2356,727),fill=RED); draw.rectangle((44,736,2356,738),fill=(90,101,112))
+              canvas.save(OUT/f'the-south-of-chambers-mail-{name}.png','PNG',optimize=True)
+              canvas.save(OUT/f'the-south-of-chambers-mail-{name}.jpg','JPEG',quality=95,optimize=True,progressive=True)
+              return canvas,[0,top,sw,top+crop_h]
+
+          variants=[(.40,'upper'),(.51,'center'),(.62,'lower')]; rendered=[]; crops={}
+          for f,n in variants:
+              im,box=render(f,n); rendered.append((n,im)); crops[n]=box
+          sw=1200; th=round(H*sw/W); lh=48
+          sheet=Image.new('RGB',(sw,(th+lh)*3),(235,233,227)); sd=ImageDraw.Draw(sheet); lf=ImageFont.truetype(font_path,28); yy=0
+          for n,im in rendered:
+              sd.text((18,yy+8),n.upper(),font=lf,fill=NAVY); yy+=lh; sheet.paste(im.resize((sw,th),Image.Resampling.LANCZOS),(0,yy)); yy+=th
+          sheet.save(OUT/'upper-bay-2023-contact-sheet.png','PNG',optimize=True)
+          desc=info.get('descriptionurl','https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Upper_New_York_Bay,_20231001_1031_0838.jpg')
+          lic=info.get('extmetadata',{}).get('LicenseShortName',{}).get('value','CC BY-SA 4.0')
+          (OUT/'SOURCE-AND-LICENSE.txt').write_text('SOURCE AND LICENSE\n\nPhotographic source:\nLower Manhattan skyline from Upper New York Bay, 20231001 1031 0838.jpg\n\nPhotograph date:\nOctober 1, 2023\n\nSource page:\n'+desc+'\n\nLicense:\n'+lic+'\n\nNo buildings, piers or bridges were generated, reconstructed, moved or labeled. The only image changes are crop, resize, mild color treatment and burgundy editorial accents.\n',encoding='utf-8')
+          (OUT/'render-metadata.json').write_text(json.dumps({'source_size':source.size,'crops':crops,'source_page':desc},indent=2),encoding='utf-8')
+          PY
+          python /tmp/render.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soc-mail-upper-bay-2023
+          path: out-bay/
+          if-no-files-found: error
+          retention-days: 7
