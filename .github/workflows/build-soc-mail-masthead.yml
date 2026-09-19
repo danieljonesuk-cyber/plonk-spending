@@ -18,19 +18,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin imagemagick
 
-      - name: Download verified skyline photograph
+      - name: Download current Lower Manhattan panorama
         run: |
           curl --fail --location --retry 4 \
-            'https://upload.wikimedia.org/wikipedia/commons/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg' \
+            'https://upload.wikimedia.org/wikipedia/commons/e/e5/2024-05-22_13_06_42A_Cropped_panoramic_view_across_the_East_River_towards_Lower_Manhattan_from_the_Brooklyn_Heights_Promenade_in_Brooklyn%2C_New_York_City%2C_New_York.jpg' \
             --output lower-manhattan-source.jpg
           test -s lower-manhattan-source.jpg
 
-      - name: Prepare embedded photograph
+      - name: Prepare embedded panorama
         run: |
           convert lower-manhattan-source.jpg \
-            -resize '3000x2000>' \
+            -resize '4200x1400>' \
             -strip \
-            -quality 78 \
+            -quality 82 \
             lower-manhattan-embedded.jpg
           test -s lower-manhattan-embedded.jpg
           identify lower-manhattan-embedded.jpg
@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p masthead-output
+          cp lower-manhattan-embedded.jpg masthead-output/source-panorama.jpg
           python3 - <<'PY'
           from pathlib import Path
           import base64
@@ -49,59 +50,63 @@ jobs:
           svg = f'''<?xml version="1.0" encoding="UTF-8"?>
           <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="760" viewBox="0 0 2400 760" role="img" aria-labelledby="title desc">
             <title id="title">The South of Chambers Mail masthead</title>
-            <desc id="desc">A photographic South of Chambers Mail masthead using a real Lower Manhattan skyline photograph. No slogan, place tags or parent-company line.</desc>
+            <desc id="desc">A photographic South of Chambers Mail masthead using a real 2024 panoramic view of Lower Manhattan. No slogan, location tags or parent-company line.</desc>
             <metadata>
-              Source photograph: Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg
-              Photographer: Joe Mabel
+              Source photograph: 2024-05-22 13 06 42A Cropped panoramic view across the East River towards Lower Manhattan from the Brooklyn Heights Promenade in Brooklyn, New York City, New York.jpg
+              Photographer: Famartin
+              Date: 22 May 2024
               License: Creative Commons Attribution-ShareAlike 4.0 International
-              Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg
+              Source: https://commons.wikimedia.org/wiki/File:2024-05-22_13_06_42A_Cropped_panoramic_view_across_the_East_River_towards_Lower_Manhattan_from_the_Brooklyn_Heights_Promenade_in_Brooklyn,_New_York_City,_New_York.jpg
               Changes: resized, cropped by the masthead viewport, desaturated, tinted and incorporated into a newspaper masthead.
             </metadata>
             <defs>
-              <clipPath id="photoClip"><rect x="44" y="326" width="2312" height="382"/></clipPath>
+              <clipPath id="photoClip"><rect x="44" y="286" width="2312" height="416"/></clipPath>
               <linearGradient id="topFade" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#fffefa" stop-opacity="0.98"/>
-                <stop offset="0.32" stop-color="#fffefa" stop-opacity="0.55"/>
+                <stop offset="0" stop-color="#fffefa" stop-opacity="0.58"/>
+                <stop offset="0.55" stop-color="#fffefa" stop-opacity="0.10"/>
                 <stop offset="1" stop-color="#fffefa" stop-opacity="0"/>
               </linearGradient>
               <linearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stop-color="#fffefa" stop-opacity="0"/>
-                <stop offset="1" stop-color="#fffefa" stop-opacity="0.18"/>
+                <stop offset="1" stop-color="#fffefa" stop-opacity="0.13"/>
               </linearGradient>
               <filter id="photoTone" x="-5%" y="-5%" width="110%" height="110%">
-                <feColorMatrix type="saturate" values="0.18"/>
+                <feColorMatrix type="saturate" values="0.22"/>
                 <feComponentTransfer>
-                  <feFuncR type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
-                  <feFuncG type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
-                  <feFuncB type="gamma" amplitude="1.05" exponent="0.92" offset="0"/>
+                  <feFuncR type="gamma" amplitude="1.02" exponent="0.94" offset="0"/>
+                  <feFuncG type="gamma" amplitude="1.02" exponent="0.94" offset="0"/>
+                  <feFuncB type="gamma" amplitude="1.02" exponent="0.94" offset="0"/>
                 </feComponentTransfer>
-              </filter>
-              <filter id="softShadow" x="-10%" y="-30%" width="120%" height="160%">
-                <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#061526" flood-opacity="0.12"/>
               </filter>
             </defs>
             <rect width="2400" height="760" fill="#fffefa"/>
-            <g filter="url(#softShadow)">
-              <text x="120" y="253" font-family="Georgia, 'DejaVu Serif', serif" font-size="203" font-weight="700" letter-spacing="-7" fill="#071a31">The South of Chambers</text>
-              <text x="1954" y="253" font-family="Georgia, 'DejaVu Serif', serif" font-size="203" font-weight="700" letter-spacing="-7" fill="#991f32">Mail</text>
-            </g>
+            <text x="80" y="230"
+                  font-family="'DejaVu Serif', Georgia, 'Times New Roman', serif"
+                  font-size="174" font-weight="700"
+                  textLength="2240" lengthAdjust="spacingAndGlyphs">
+              <tspan fill="#071a31">The South of Chambers </tspan><tspan fill="#991f32">Mail</tspan>
+            </text>
+            <rect x="44" y="268" width="2312" height="5" fill="#991f32"/>
             <g clip-path="url(#photoClip)">
-              <image x="44" y="326" width="2312" height="382" href="data:image/jpeg;base64,{encoded}" preserveAspectRatio="xMidYMid slice" filter="url(#photoTone)"/>
-              <rect x="44" y="326" width="2312" height="382" fill="#991f32" opacity="0.055" style="mix-blend-mode:multiply"/>
-              <rect x="44" y="326" width="2312" height="130" fill="url(#topFade)"/>
-              <rect x="44" y="620" width="2312" height="88" fill="url(#bottomFade)"/>
+              <image x="44" y="286" width="2312" height="416"
+                     href="data:image/jpeg;base64,{encoded}"
+                     preserveAspectRatio="xMidYMid slice"
+                     filter="url(#photoTone)"/>
+              <rect x="44" y="286" width="2312" height="416" fill="#991f32" opacity="0.047" style="mix-blend-mode:multiply"/>
+              <rect x="44" y="286" width="2312" height="54" fill="url(#topFade)"/>
+              <rect x="44" y="654" width="2312" height="48" fill="url(#bottomFade)"/>
             </g>
-            <rect x="44" y="309" width="2312" height="5" fill="#991f32"/>
-            <rect x="44" y="718" width="2312" height="9" fill="#991f32"/>
-            <rect x="44" y="735" width="2312" height="1.5" fill="#071a31" opacity="0.58"/>
+            <rect x="44" y="710" width="2312" height="9" fill="#991f32"/>
+            <rect x="44" y="730" width="2312" height="1.5" fill="#071a31" opacity="0.58"/>
           </svg>'''
 
           Path('masthead-output/soc-mail-self-contained.svg').write_text(svg, encoding='utf-8')
           Path('masthead-output/SOURCE-AND-LICENSE.txt').write_text(
-              'Photograph: "Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg"\n'
-              'Photographer: Joe Mabel\n'
+              'Photograph: 2024-05-22 13 06 42A Cropped panoramic view across the East River towards Lower Manhattan from the Brooklyn Heights Promenade in Brooklyn, New York City, New York.jpg\n'
+              'Photographer: Famartin\n'
+              'Date: May 22, 2024\n'
               'License: CC BY-SA 4.0\n'
-              'Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg\n'
+              'Source: https://commons.wikimedia.org/wiki/File:2024-05-22_13_06_42A_Cropped_panoramic_view_across_the_East_River_towards_Lower_Manhattan_from_the_Brooklyn_Heights_Promenade_in_Brooklyn,_New_York_City,_New_York.jpg\n'
               'Changes: resized, cropped by the masthead viewport, desaturated, tinted and incorporated into a newspaper masthead.\n',
               encoding='utf-8'
           )
