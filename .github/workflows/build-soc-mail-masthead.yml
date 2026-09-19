@@ -83,9 +83,13 @@ jobs:
             <text x="80" y="230"
                   font-family="'DejaVu Serif', Georgia, 'Times New Roman', serif"
                   font-size="174" font-weight="700"
-                  textLength="2240" lengthAdjust="spacingAndGlyphs">
-              <tspan fill="#071a31">The South of Chambers </tspan><tspan fill="#991f32">Mail</tspan>
-            </text>
+                  textLength="1740" lengthAdjust="spacingAndGlyphs"
+                  fill="#071a31">The South of Chambers</text>
+            <text x="1860" y="230"
+                  font-family="'DejaVu Serif', Georgia, 'Times New Roman', serif"
+                  font-size="174" font-weight="700"
+                  textLength="460" lengthAdjust="spacingAndGlyphs"
+                  fill="#991f32">Mail</text>
             <rect x="44" y="268" width="2312" height="5" fill="#991f32"/>
             <g clip-path="url(#photoClip)">
               <image x="44" y="286" width="2312" height="416"
