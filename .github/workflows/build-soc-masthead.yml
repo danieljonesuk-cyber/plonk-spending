@@ -1,0 +1,158 @@
+name: Build SOC masthead assets
+
+on:
+  push:
+    branches:
+      - soc-masthead-fix
+    paths:
+      - .github/workflows/build-soc-masthead.yml
+      - soc-masthead-source-proxy.md
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Build PNG and self-contained SVG
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
+          import base64
+          import io
+          import textwrap
+
+          out = Path('masthead-output')
+          out.mkdir(exist_ok=True)
+
+          urls = [
+              'https://upload.wikimedia.org/wikipedia/commons/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg',
+              'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg/3840px-Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg',
+              'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg/1280px-Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg',
+          ]
+
+          raw = None
+          last_error = None
+          for url in urls:
+              try:
+                  req = Request(url, headers={'User-Agent': 'SouthOfChambersMasthead/1.0'})
+                  with urlopen(req, timeout=90) as response:
+                      raw = response.read()
+                  if raw:
+                      break
+              except Exception as exc:
+                  last_error = exc
+
+          if not raw:
+              raise RuntimeError(f'Could not retrieve skyline source: {last_error}')
+
+          source = Image.open(io.BytesIO(raw)).convert('RGB')
+          source.save(out / 'lower-manhattan-source.jpg', quality=95)
+
+          W, H = 2400, 760
+          BG = (255, 254, 250)
+          NAVY = (7, 26, 49)
+          RED = (153, 31, 50)
+
+          canvas = Image.new('RGB', (W, H), BG)
+          draw = ImageDraw.Draw(canvas)
+
+          font_candidates = [
+              '/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf',
+              '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf',
+              '/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf',
+          ]
+          font_path = next((p for p in font_candidates if Path(p).exists()), None)
+          if not font_path:
+              raise RuntimeError('No suitable serif font found')
+
+          left_text = 'The South of Chambers'
+          right_text = 'Mail'
+          x0 = 82
+          right_margin = 82
+          gap = 18
+          font_size = 215
+          while font_size > 80:
+              font = ImageFont.truetype(font_path, font_size)
+              lb = draw.textbbox((0, 0), left_text, font=font)
+              rb = draw.textbbox((0, 0), right_text, font=font)
+              left_w = lb[2] - lb[0]
+              right_w = rb[2] - rb[0]
+              if left_w + gap + right_w <= W - x0 - right_margin:
+                  break
+              font_size -= 2
+
+          text_y = 28
+          draw.text((x0, text_y), left_text, font=font, fill=NAVY, stroke_width=1, stroke_fill=NAVY)
+          draw.text((x0 + left_w + gap, text_y), right_text, font=font, fill=RED, stroke_width=1, stroke_fill=RED)
+
+          rule_y = 292
+          draw.rectangle((44, rule_y, W - 44, rule_y + 5), fill=RED)
+
+          photo_box = (44, 310, W - 44, 710)
+          pw = photo_box[2] - photo_box[0]
+          ph = photo_box[3] - photo_box[1]
+          photo = ImageOps.fit(source, (pw, ph), method=Image.Resampling.LANCZOS, centering=(0.49, 0.55))
+          photo = ImageEnhance.Color(photo).enhance(0.24)
+          photo = ImageEnhance.Contrast(photo).enhance(1.04)
+
+          wash = Image.new('RGB', photo.size, RED)
+          photo = Image.blend(photo, wash, 0.045)
+          canvas.paste(photo, (photo_box[0], photo_box[1]))
+
+          # Gentle white fade at the top of the photograph for a print-masthead transition.
+          overlay = Image.new('RGBA', (pw, ph), (255, 255, 255, 0))
+          od = ImageDraw.Draw(overlay)
+          fade_h = 95
+          for y in range(fade_h):
+              alpha = int(188 * (1 - y / fade_h) ** 1.8)
+              od.line((0, y, pw, y), fill=(255, 255, 255, alpha))
+          photo_region = canvas.crop(photo_box).convert('RGBA')
+          photo_region = Image.alpha_composite(photo_region, overlay)
+          canvas.paste(photo_region.convert('RGB'), (photo_box[0], photo_box[1]))
+
+          draw = ImageDraw.Draw(canvas)
+          draw.rectangle((44, 718, W - 44, 727), fill=RED)
+          draw.rectangle((44, 735, W - 44, 737), fill=(72, 80, 89))
+
+          png_path = out / 'the-south-of-chambers-mail-masthead.png'
+          canvas.save(png_path, format='PNG', optimize=True)
+
+          png_b64 = base64.b64encode(png_path.read_bytes()).decode('ascii')
+          svg = f'''<?xml version="1.0" encoding="UTF-8"?>
+          <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="760" viewBox="0 0 2400 760" role="img" aria-labelledby="title desc">
+            <title id="title">The South of Chambers Mail masthead</title>
+            <desc id="desc">A self-contained newspaper masthead using a real Lower Manhattan photograph with navy and burgundy typography and no additional slogans or labels.</desc>
+            <metadata>Photograph: Lower Manhattan skyline from Staten Island Ferry, 28 May 2026. Photographer: Joe Mabel. License: CC BY-SA 4.0. Adapted for South of Chambers.</metadata>
+            <image width="2400" height="760" href="data:image/png;base64,{png_b64}"/>
+          </svg>
+          '''
+          (out / 'the-south-of-chambers-mail-masthead-self-contained.svg').write_text(textwrap.dedent(svg), encoding='utf-8')
+
+          license_text = '''SOURCE AND LICENSE
+
+          Photograph: “Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg”
+          Photographer: Joe Mabel
+          Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg
+          License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+
+          This masthead is an adaptation. The SVG is self-contained and has no externally linked image files. The PNG is the most broadly compatible web version.
+          '''
+          (out / 'SOURCE-AND-LICENSE.txt').write_text(textwrap.dedent(license_text), encoding='utf-8')
+
+      - name: Upload masthead files
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-of-chambers-mail-masthead
+          path: masthead-output/
+          if-no-files-found: error
+          retention-days: 7
