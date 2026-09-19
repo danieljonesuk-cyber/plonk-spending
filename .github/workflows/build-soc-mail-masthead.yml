@@ -80,15 +80,13 @@ jobs:
               </filter>
             </defs>
             <rect width="2400" height="760" fill="#fffefa"/>
-            <text x="80" y="230"
+            <text x="80" y="220"
                   font-family="'DejaVu Serif', Georgia, 'Times New Roman', serif"
-                  font-size="174" font-weight="700"
-                  textLength="1740" lengthAdjust="spacingAndGlyphs"
+                  font-size="140" font-weight="700"
                   fill="#071a31">The South of Chambers</text>
-            <text x="1860" y="230"
+            <text x="1965" y="220"
                   font-family="'DejaVu Serif', Georgia, 'Times New Roman', serif"
-                  font-size="174" font-weight="700"
-                  textLength="460" lengthAdjust="spacingAndGlyphs"
+                  font-size="140" font-weight="700"
                   fill="#991f32">Mail</text>
             <rect x="44" y="268" width="2312" height="5" fill="#991f32"/>
             <g clip-path="url(#photoClip)">
