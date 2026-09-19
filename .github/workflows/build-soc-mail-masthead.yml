@@ -13,10 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install renderer
+      - name: Install image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin
+          sudo apt-get install -y librsvg2-bin imagemagick
 
       - name: Download verified skyline photograph
         run: |
@@ -24,6 +24,16 @@ jobs:
             'https://upload.wikimedia.org/wikipedia/commons/e/e9/Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg' \
             --output lower-manhattan-source.jpg
           test -s lower-manhattan-source.jpg
+
+      - name: Prepare embedded photograph
+        run: |
+          convert lower-manhattan-source.jpg \
+            -resize '3000x2000>' \
+            -strip \
+            -quality 78 \
+            lower-manhattan-embedded.jpg
+          test -s lower-manhattan-embedded.jpg
+          identify lower-manhattan-embedded.jpg
 
       - name: Build self-contained SVG and PNG
         shell: bash
@@ -33,19 +43,19 @@ jobs:
           from pathlib import Path
           import base64
 
-          image = Path('lower-manhattan-source.jpg').read_bytes()
+          image = Path('lower-manhattan-embedded.jpg').read_bytes()
           encoded = base64.b64encode(image).decode('ascii')
 
           svg = f'''<?xml version="1.0" encoding="UTF-8"?>
           <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="760" viewBox="0 0 2400 760" role="img" aria-labelledby="title desc">
             <title id="title">The South of Chambers Mail masthead</title>
-            <desc id="desc">A photographic South of Chambers Mail masthead using a real 2026 Lower Manhattan skyline photograph. No slogan, place tags or parent-company line.</desc>
+            <desc id="desc">A photographic South of Chambers Mail masthead using a real Lower Manhattan skyline photograph. No slogan, place tags or parent-company line.</desc>
             <metadata>
               Source photograph: Lower Manhattan skyline from Staten Island Ferry 28 May 2026 - 02.jpg
               Photographer: Joe Mabel
               License: Creative Commons Attribution-ShareAlike 4.0 International
               Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg
-              Changes: cropped, desaturated, tinted and incorporated into a newspaper masthead.
+              Changes: resized, cropped by the masthead viewport, desaturated, tinted and incorporated into a newspaper masthead.
             </metadata>
             <defs>
               <clipPath id="photoClip"><rect x="44" y="326" width="2312" height="382"/></clipPath>
@@ -92,13 +102,14 @@ jobs:
               'Photographer: Joe Mabel\n'
               'License: CC BY-SA 4.0\n'
               'Source: https://commons.wikimedia.org/wiki/File:Lower_Manhattan_skyline_from_Staten_Island_Ferry_28_May_2026_-_02.jpg\n'
-              'Changes: cropped, desaturated, tinted and incorporated into a newspaper masthead.\n',
+              'Changes: resized, cropped by the masthead viewport, desaturated, tinted and incorporated into a newspaper masthead.\n',
               encoding='utf-8'
           )
           PY
           rsvg-convert --width 2400 --height 760 masthead-output/soc-mail-self-contained.svg > masthead-output/soc-mail-masthead.png
           test -s masthead-output/soc-mail-self-contained.svg
           test -s masthead-output/soc-mail-masthead.png
+          file masthead-output/soc-mail-self-contained.svg masthead-output/soc-mail-masthead.png
           ls -lh masthead-output
 
       - name: Upload working masthead files
